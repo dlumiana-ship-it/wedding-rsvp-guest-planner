@@ -1,0 +1,6 @@
+{
+  "name": "Wedding RSVP & Guest Planner",
+  "description": "An elegant wedding website with an RSVP form, a guest and seating table management dashboard, and an integrated event assistant chatbot.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

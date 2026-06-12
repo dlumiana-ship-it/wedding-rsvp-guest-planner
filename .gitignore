@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# Coverage reports
+coverage/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment variables — NUNCA subir para o GitHub!
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+# Manter apenas o exemplo
+!.env.example
+
+# Prisma
+/generated/prisma
+prisma/migrations/
+
+# Vercel
+.vercel
+
+# SQLite (base de dados local antiga — Supabase agora)
+*.db
+*.db-journal
+
+# Editor
+.vscode/
+.idea/

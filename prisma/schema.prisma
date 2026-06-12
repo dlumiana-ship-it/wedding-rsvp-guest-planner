@@ -1,0 +1,49 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Guest {
+  id                   String   @id
+  name                 String
+  side                 String
+  phone                String   @unique
+  role                 String   @default("GUEST")
+  diet                 String
+  dietDetails          String?
+  musicRequest         String?
+  needsAccommodation   String
+  accommodationDetails String?
+  tableId              Int?
+  checkIn              Boolean  @default(false)
+  qrCode               String?
+  timestamp            DateTime @default(now())
+}
+
+model Song {
+  id          String   @id @default(cuid())
+  title       String
+  artist      String
+  requestedBy String?
+  category    String   @default("recepcao")
+  position    Int      @default(0)
+  isPlayed    Boolean  @default(false)
+  duration    String?
+  notes       String?
+  createdAt   DateTime @default(now())
+}
+
+model GiftPresenter {
+  id        String   @id @default(cuid())
+  guestName String
+  guestId   String?
+  position  Int      @default(0)
+  hasGiven  Boolean  @default(false)
+  note      String?
+  group     String?
+  createdAt DateTime @default(now())
+}
