@@ -3,6 +3,8 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Printer, MessageCircle, Copy, Check, MapPin, Gift, Church, FileText, Link as LinkIcon } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 interface Guest {
   id: string;
@@ -69,21 +71,68 @@ export default function InviteModal({ isOpen, onClose, guest }: InviteModalProps
   };
 
   // ── Actions ───────────────────────────────────────────────────────────────
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const handleCopyLink = async () => {
     await navigator.clipboard.writeText(rsvpUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const handleWhatsApp = () => {
+  const handleWhatsAppLink = () => {
     const text = `Olá ${firstName}! 🌿\n\n` +
       `Temos a alegria de partilhar consigo o convite para o nosso casamento.\n\n` +
       `📅 29 de Agosto de 2026\n📍 Maputo\n\n` +
       `Clique no link abaixo para aceder ao convite interativo e confirmar a sua presença:\n` +
       `👉 ${rsvpUrl}\n\n` +
       `Com carinho,\nLumiana & Vicente`;
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    
+    // Auto-preencher número se existir
+    let phone = guest.phone || '';
+    phone = phone.replace(/\D/g, ''); // Remove tudo que não for número
+    const url = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
+  };
+
+  const handleSharePDF = async () => {
+    if (!cardRef.current) return;
+    try {
+      setIsGenerating(true);
+      // Wait for a tiny moment to ensure fonts are rendered
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const canvas = await html2canvas(cardRef.current, { scale: 2, useCORS: true, backgroundColor: paperColor });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a5'
+      });
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      
+      const pdfBlob = pdf.output('blob');
+      const file = new File([pdfBlob], `Convite_${firstName}.pdf`, { type: 'application/pdf' });
+      
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'Convite de Casamento',
+          text: `Convite de Casamento para ${firstName}`
+        });
+      } else {
+        // Fallback for devices without native share
+        pdf.save(`Convite_${firstName}.pdf`);
+        alert("O PDF foi descarregado. Como o seu navegador atual não suporta a partilha automática, pode agora enviá-lo pelo WhatsApp anexando o ficheiro.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Erro ao gerar PDF.");
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -101,7 +150,7 @@ export default function InviteModal({ isOpen, onClose, guest }: InviteModalProps
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 16 }}
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed inset-x-4 top-6 bottom-6 md:inset-auto md:left-1/2 md:-translate-x-1/2 md:top-1/2 md:-translate-y-1/2 md:w-[480px] md:max-h-[92vh] z-50 flex flex-col"
+            className="fixed inset-x-4 top-[4vh] bottom-[4vh] md:inset-auto md:left-1/2 md:-translate-x-1/2 md:top-1/2 md:-translate-y-1/2 md:w-[480px] md:max-h-[92vh] z-50 flex flex-col bg-white rounded-2xl shadow-2xl overflow-hidden"
           >
             {/* Custom fonts for this modal */}
             <style dangerouslySetInnerHTML={{ __html: `
@@ -252,26 +301,35 @@ export default function InviteModal({ isOpen, onClose, guest }: InviteModalProps
             </div>
 
             {/* Actions */}
-            <div className="bg-white rounded-b-2xl border-t border-stone-100 p-5 space-y-3">
+            <div className="bg-white rounded-b-2xl border-t border-stone-100 p-4 space-y-2 shrink-0">
               <button
-                onClick={handleWhatsApp}
-                className="w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2.5 transition-all bg-[#25D366] hover:bg-[#20bd5a] text-white shadow-[0_4px_16px_rgba(37,211,102,0.2)] active:scale-[0.98]"
+                onClick={handleSharePDF}
+                disabled={isGenerating}
+                className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2.5 transition-all bg-[#25D366] hover:bg-[#20bd5a] text-white shadow-[0_4px_16px_rgba(37,211,102,0.2)] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                <MessageCircle className="w-5 h-5" />
-                Enviar por WhatsApp
+                <FileText className="w-5 h-5" />
+                {isGenerating ? 'A gerar PDF...' : 'Partilhar PDF por WhatsApp'}
               </button>
 
-              <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={handleWhatsAppLink}
+                className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2.5 transition-all bg-stone-800 hover:bg-stone-900 text-white shadow-sm active:scale-[0.98]"
+              >
+                <MessageCircle className="w-5 h-5 text-emerald-400" />
+                Enviar Link Direto (Automático)
+              </button>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
                 <button
                   onClick={handlePrint}
-                  className="py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200 active:scale-[0.98]"
+                  className="py-2.5 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-all bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200 active:scale-[0.98]"
                 >
-                  <FileText className="w-4 h-4 text-stone-500" />
-                  Guardar como PDF
+                  <Printer className="w-4 h-4 text-stone-500" />
+                  Imprimir PDF
                 </button>
                 <button
                   onClick={handleCopyLink}
-                  className="py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200 active:scale-[0.98]"
+                  className="py-2.5 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-all bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200 active:scale-[0.98]"
                 >
                   {copied ? <><Check className="w-4 h-4 text-emerald-600" /> Copiado</> : <><Copy className="w-4 h-4 text-stone-500" /> Copiar Link</>}
                 </button>
