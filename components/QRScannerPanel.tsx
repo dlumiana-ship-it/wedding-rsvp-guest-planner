@@ -19,7 +19,11 @@ interface ScanResult {
   timestamp: Date;
 }
 
-export default function QRScannerPanel() {
+interface QRScannerPanelProps {
+  onScanSuccess?: () => void;
+}
+
+export default function QRScannerPanel({ onScanSuccess }: QRScannerPanelProps) {
   const [scanning, setScanning] = useState(false);
   const [loading, setLoading] = useState(false);
   const [lastResult, setLastResult] = useState<ScanResult | null>(null);
@@ -61,6 +65,10 @@ export default function QRScannerPanel() {
 
       setLastResult(result);
       setScanHistory(prev => [result, ...prev.slice(0, 19)]); // Keep last 20
+
+      if (res.ok && data.success && onScanSuccess) {
+        onScanSuccess();
+      }
     } catch (err) {
       const result: ScanResult = {
         id: qrData,
@@ -78,6 +86,18 @@ export default function QRScannerPanel() {
   const startScanner = useCallback(async () => {
     setCameraError(null);
     setLastResult(null);
+
+    // Camera access on mobile requires secure origin (HTTPS or localhost)
+    const isSecureContext = typeof window !== 'undefined' && 
+      (window.location.protocol === 'https:' || 
+       window.location.hostname === 'localhost' || 
+       window.location.hostname === '127.0.0.1');
+
+    if (!isSecureContext) {
+      setCameraError('Erro de Segurança: A câmera só pode ser iniciada em conexões seguras (HTTPS). Por favor, use o link HTTPS oficial online.');
+      return;
+    }
+
     setScanning(true);
   }, []);
 
@@ -93,35 +113,48 @@ export default function QRScannerPanel() {
     if (!scanning) return;
 
     let mounted = true;
-    import('html5-qrcode').then(({ Html5Qrcode }) => {
-      if (!mounted) return;
+    let qrCode: any = null;
 
-      const qrCode = new Html5Qrcode('qr-scanner-container');
-      html5QrCodeRef.current = qrCode;
-
-      qrCode.start(
-        { facingMode: 'environment' },
-        { fps: 15, qrbox: { width: 260, height: 260 }, aspectRatio: 1.0 },
-        (decodedText) => {
-          processQrData(decodedText);
-        },
-        () => { /* scan frame errors are normal */ }
-      ).catch((err: any) => {
+    // Wait 150ms to ensure container is fully visible and rendered in DOM layout
+    const timer = setTimeout(() => {
+      import('html5-qrcode').then(({ Html5Qrcode }) => {
         if (!mounted) return;
-        const msg = String(err).toLowerCase();
-        if (msg.includes('permission') || msg.includes('notallowed')) {
-          setCameraError('Permissão de câmera negada. Autorize nas definições do browser.');
-        } else if (msg.includes('notfound') || msg.includes('no camera')) {
-          setCameraError('Nenhuma câmera detetada neste dispositivo.');
-        } else {
-          setCameraError('Não foi possível iniciar a câmera. Tente novamente.');
+
+        const container = document.getElementById('qr-scanner-container');
+        if (!container) {
+          setCameraError('Contentor da câmera não localizado.');
+          setScanning(false);
+          return;
         }
-        setScanning(false);
+
+        qrCode = new Html5Qrcode('qr-scanner-container');
+        html5QrCodeRef.current = qrCode;
+
+        qrCode.start(
+          { facingMode: 'environment' },
+          { fps: 15, qrbox: { width: 260, height: 260 }, aspectRatio: 1.0 },
+          (decodedText) => {
+            processQrData(decodedText);
+          },
+          () => { /* scan frame errors are normal */ }
+        ).catch((err: any) => {
+          if (!mounted) return;
+          const msg = String(err).toLowerCase();
+          if (msg.includes('permission') || msg.includes('notallowed')) {
+            setCameraError('Permissão de câmera negada. Autorize nas definições do browser.');
+          } else if (msg.includes('notfound') || msg.includes('no camera')) {
+            setCameraError('Nenhuma câmera detetada neste dispositivo.');
+          } else {
+            setCameraError('Não foi possível iniciar a câmera. Verifique se outra app está a usar a câmera.');
+          }
+          setScanning(false);
+        });
       });
-    });
+    }, 150);
 
     return () => {
       mounted = false;
+      clearTimeout(timer);
       if (html5QrCodeRef.current?.isScanning) {
         html5QrCodeRef.current.stop().catch(() => {});
       }

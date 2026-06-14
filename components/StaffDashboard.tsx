@@ -323,7 +323,7 @@ export default function StaffDashboard({
               )}
               {activeSection === 'scanner' && (
                 <SectionWrapper key="scanner" title="Check-in QR Code" icon={QrCode} subtitle="Leia o QR Code do convite para registar a entrada do convidado">
-                  <QRScannerPanel />
+                  <QRScannerPanel onScanSuccess={onRefreshGuests} />
                 </SectionWrapper>
               )}
               {activeSection === 'tables' && (

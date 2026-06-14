@@ -163,16 +163,19 @@ export default function WeddingPlannerApp({ user, onLogout, onLogin }: { user?: 
   const [showCheckInOverlay, setShowCheckInOverlay] = useState(false);
   const prevCheckInRef = useRef<boolean>(user?.checkIn || false);
 
-  // Sync check-in in real-time by polling
+  // Sync check-in in real-time by polling (for guests waiting for checkin or staff dashboard)
   useEffect(() => {
-    if (!currentUser || currentUser.role !== 'GUEST' || currentUser.checkIn) return;
+    const isGuestPendingCheckin = currentUser && currentUser.role === 'GUEST' && !currentUser.checkIn;
+    const isStaff = user && user.role === 'STAFF';
+
+    if (!isGuestPendingCheckin && !isStaff) return;
 
     const interval = setInterval(() => {
       fetchGuests();
-    }, 4000);
+    }, isStaff ? 3000 : 4000);
 
     return () => clearInterval(interval);
-  }, [currentUser?.id, currentUser?.checkIn]);
+  }, [currentUser?.id, currentUser?.checkIn, user]);
 
   // Handle overlay trigger on status change
   useEffect(() => {
