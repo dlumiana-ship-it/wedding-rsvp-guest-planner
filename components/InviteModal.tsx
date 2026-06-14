@@ -3,8 +3,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Printer, MessageCircle, Copy, Check, MapPin, Gift, Church, FileText, Link as LinkIcon } from 'lucide-react';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
 
 interface Guest {
   id: string;
@@ -100,6 +98,9 @@ export default function InviteModal({ isOpen, onClose, guest }: InviteModalProps
       setIsGenerating(true);
       // Wait for a tiny moment to ensure fonts are rendered
       await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
       
       const canvas = await html2canvas(cardRef.current, { scale: 2, useCORS: true, backgroundColor: paperColor });
       const imgData = canvas.toDataURL('image/png');
