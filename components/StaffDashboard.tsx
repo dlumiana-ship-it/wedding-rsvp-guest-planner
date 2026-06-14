@@ -376,7 +376,7 @@ export default function StaffDashboard({
       <ExportModal
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
-        guests={guests}
+        guests={guests as any}
         tables={tables}
         tableNames={tableNames}
       />
@@ -656,7 +656,11 @@ function DatabaseSection({
                       <div>
                         <div className="flex items-center gap-1.5">
                           <p className="font-semibold text-stone-850 text-xs">{g.name}</p>
-                          {g.vip && <Crown className="w-3.5 h-3.5 text-wedding-gold fill-wedding-gold" title="Convidado VIP" />}
+                          {g.vip && (
+                            <span title="Convidado VIP">
+                              <Crown className="w-3.5 h-3.5 text-wedding-gold fill-wedding-gold" />
+                            </span>
+                          )}
                           {g.role && g.role !== 'GUEST' && (
                             <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${
                               g.role === 'MC' ? 'bg-amber-100 text-amber-800 border border-amber-200' :

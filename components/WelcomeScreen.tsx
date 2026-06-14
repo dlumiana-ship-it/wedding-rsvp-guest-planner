@@ -4,10 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Heart, Calendar, ArrowRight } from 'lucide-react';
 
+interface Companion {
+  name: string;
+}
+
 interface Guest {
   id: string;
   name: string;
   vip: boolean;
+  companions?: Companion[];
 }
 
 interface WelcomeScreenProps {
@@ -24,7 +29,10 @@ export default function WelcomeScreen({ guest, onEnter, heroPhoto }: WelcomeScre
     seconds: 0,
   });
 
-  const firstName = guest.name.split(' ')[0];
+  const partner = guest.companions?.[0]?.name;
+  const firstName = partner 
+    ? `${guest.name.split(' ')[0]} & ${partner.split(' ')[0]}` 
+    : guest.name.split(' ')[0];
 
   useEffect(() => {
     const targetDate = new Date('2026-09-12T12:00:00');

@@ -86,7 +86,7 @@ export default function DJDashboard({ onLogout }: { onLogout: () => void }) {
     }
   };
 
-  const handleModeration = async (song: Song, status: 'APPROVED' | 'REJECTED') => {
+  const handleModeration = async (song: Song, status: 'APPROVED' | 'REJECTED' | 'PENDING') => {
     try {
       const res = await fetch('/api/songs', {
         method: 'PUT',

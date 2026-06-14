@@ -7,7 +7,8 @@ import {
   Heart, Calendar, MapPin, Music, Utensils, Home, 
   Users, Sparkles, Send, Download, Plus, Trash2, 
   Lock, Check, MessageSquare, X, ArrowRight, Printer, 
-  Compass, Volume2, Camera, Upload, Gift, BookOpen
+  Compass, Volume2, Camera, Upload, Gift, BookOpen,
+  CheckCircle2, User
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
@@ -16,6 +17,7 @@ import RsvpForm from './RsvpForm';
 import GuestCenter from './GuestCenter';
 import DigitalWall from './DigitalWall';
 import CollaborativeGallery from './CollaborativeGallery';
+import MusicRequestWidget from './MusicRequestWidget';
 
 const StaffDashboard = dynamic(() => import('./StaffDashboard'), { ssr: false });
 const DJDashboard = dynamic(() => import('./DJDashboard'), { ssr: false });
@@ -161,6 +163,7 @@ export default function WeddingPlannerApp({ user, onLogout, onLogin }: { user?: 
   }, [chatMessages, chatLoading]);
 
   const [showCheckInOverlay, setShowCheckInOverlay] = useState(false);
+  const [checkInTime, setCheckInTime] = useState<string>('');
   const prevCheckInRef = useRef<boolean>(user?.checkIn || false);
 
   // Sync check-in in real-time by polling (for guests waiting for checkin or staff dashboard)
@@ -182,8 +185,9 @@ export default function WeddingPlannerApp({ user, onLogout, onLogin }: { user?: 
     if (currentUser && currentUser.role === 'GUEST') {
       if (currentUser.checkIn && !prevCheckInRef.current) {
         setShowCheckInOverlay(true);
+        setCheckInTime(new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
       }
-      prevCheckInRef.current = currentUser.checkIn;
+      prevCheckInRef.current = currentUser.checkIn || false;
     }
   }, [currentUser?.checkIn]);
 
@@ -450,7 +454,9 @@ export default function WeddingPlannerApp({ user, onLogout, onLogin }: { user?: 
         <div className="flex items-center gap-4">
           {currentUser && (
             <span className="text-xs text-stone-500 font-medium hidden sm:block">
-              Olá, {currentUser.name.split(' ')[0]}
+              Olá, {currentUser.companions?.[0]?.name 
+                ? `${currentUser.name.split(' ')[0]} & ${currentUser.companions[0].name.split(' ')[0]}`
+                : currentUser.name.split(' ')[0]}
             </span>
           )}
           {onLogout && (
@@ -499,16 +505,6 @@ export default function WeddingPlannerApp({ user, onLogout, onLogin }: { user?: 
               exit={{ opacity: 0, y: -15 }}
               className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch"
             >
-              {/* Photo customization trigger button (for demo couple layout) */}
-              <div className="lg:col-span-12 flex justify-start">
-                <button
-                  onClick={() => setShowPhotoModal(true)}
-                  className="bg-white border border-[#001B3D]/10 text-[#001B3D] text-[10px] font-bold tracking-widest uppercase px-4 py-2.5 rounded-full shadow-xs hover:bg-stone-50 flex items-center gap-1.5 transition-all cursor-pointer"
-                >
-                  📷 Personalizar Fotos do Casal
-                </button>
-              </div>
-
               {/* Cover/Hero card */}
               <div className="lg:col-span-8 bg-white border border-[#001B3D]/10 rounded-3xl p-6 md:p-10 flex flex-col justify-between relative overflow-hidden shadow-xs min-h-[460px]">
                 <div className="absolute inset-0 z-0">
@@ -528,8 +524,9 @@ export default function WeddingPlannerApp({ user, onLogout, onLogin }: { user?: 
               <div className="lg:col-span-4 bg-[#001B3D] rounded-3xl p-6 md:p-8 text-white flex flex-col justify-between shadow-md relative overflow-hidden">
                 <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-white/5 rounded-full pointer-events-none" />
                 <div className="text-left">
-                  <h3 className="text-xs font-serif italic tracking-wider text-[#C5A880] mb-6">Save the Date</h3>
-                  <p className="text-stone-300 text-xs mb-6">Aguardando ansiosamente com contagem regressiva para o nosso grande dia:</p>
+                  <h3 className="text-xs font-serif italic tracking-wider text-[#C5A880] mb-4">Save the Date</h3>
+                  <p className="text-stone-300 text-xs mb-3">Aguardando ansiosamente com contagem regressiva para o nosso grande dia:</p>
+                  <p className="text-[#C5A880] text-xl font-serif font-bold tracking-wide mb-6">12 de Setembro de 2026</p>
                   
                   <div className="grid grid-cols-4 gap-1.5 text-center mb-8">
                     {[{ v: timeLeft.days, l: 'Dias' }, { v: timeLeft.hours, l: 'Horas' }, { v: timeLeft.minutes, l: 'Min' }, { v: timeLeft.seconds, l: 'Seg' }].map((item, i) => (
@@ -615,6 +612,25 @@ export default function WeddingPlannerApp({ user, onLogout, onLogin }: { user?: 
                   <span className="text-xs font-serif font-semibold text-wedding-navy mt-1 block">Formal / Gala Elegante</span>
                 </div>
               </div>
+
+              {/* Music Request Widget on Main Screen */}
+              {currentUser && (
+                <div className="lg:col-span-12 bg-white border border-[#001B3D]/10 rounded-3xl p-6 md:p-8 shadow-xs">
+                  <div className="max-w-xl mx-auto">
+                    <MusicRequestWidget
+                      currentMusic={currentUser.musicRequest || undefined}
+                      userId={currentUser.id}
+                      userName={currentUser.name}
+                      onMusicSaved={(newMusic) => {
+                        const updated = { ...currentUser, musicRequest: newMusic };
+                        setCurrentUser(updated);
+                        setGuests(prev => prev.map(g => g.id === currentUser.id ? updated : g));
+                        localStorage.setItem('wedding_user_session', JSON.stringify(updated));
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -629,10 +645,11 @@ export default function WeddingPlannerApp({ user, onLogout, onLogin }: { user?: 
             >
               {currentUser && (currentUser.status === 'CONFIRMED' || currentUser.status === 'DECLINED') ? (
                 <GuestCenter
-                  guest={currentUser}
+                  guest={currentUser as any}
                   tableName={guestTableName}
                   tableCompanions={getTableCompanions(currentUser, guests)}
-                  onUpdateGuest={(updated) => {
+                  giftSuggestions={giftSuggestions}
+                  onUpdateGuest={(updated: any) => {
                     setCurrentUser(updated);
                     fetchGuests();
                   }}
@@ -814,124 +831,6 @@ export default function WeddingPlannerApp({ user, onLogout, onLogin }: { user?: 
 
 
 
-      {/* Photo Customization Modal */}
-      <AnimatePresence>
-        {showPhotoModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowPhotoModal(false)}
-              className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm"
-            />
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative border border-stone-100 text-stone-950 overflow-y-auto max-h-[90vh]"
-            >
-              <button
-                onClick={() => setShowPhotoModal(false)}
-                className="absolute top-4 right-4 p-2 text-stone-400 hover:text-stone-900 rounded-full"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="mb-6 flex items-center gap-2 text-left">
-                <Camera className="w-5 h-5 text-wedding-burgundy animate-pulse" />
-                <div>
-                  <h3 className="font-serif text-lg text-wedding-navy">Personalizar Fotografias do Site</h3>
-                  <p className="text-[10px] text-stone-400">Altere o banner de entrada e a imagem da vossa história</p>
-                </div>
-              </div>
-
-              <div className="space-y-6 text-left">
-                {/* 1. Hero banner photo upload */}
-                <div className="border-t border-stone-100 pt-4">
-                  <span className="text-[10px] uppercase tracking-wider font-bold text-stone-500 mb-2 block">Foto do Banner Principal</span>
-                  <div className="flex flex-col sm:flex-row gap-4 items-center">
-                    <img src={heroPhoto} className="w-24 h-16 object-cover rounded-lg border shrink-0 bg-stone-50" />
-                    
-                    <div
-                      onClick={() => document.getElementById('hero-photo-custom-input')?.click()}
-                      className="flex-1 border-2 border-dashed border-stone-200 hover:border-wedding-burgundy hover:bg-rose-50/5 rounded-xl p-4 text-center cursor-pointer transition-all duration-300"
-                    >
-                      <Upload className="w-4 h-4 mx-auto text-stone-400 mb-1" />
-                      <p className="text-[10px] font-semibold text-stone-600">Arraste ou clique para selecionar</p>
-                      <input
-                        type="file"
-                        id="hero-photo-custom-input"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={e => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const r = new FileReader();
-                            r.onload = () => {
-                              if (typeof r.result === 'string') {
-                                setHeroPhoto(r.result);
-                                localStorage.setItem('wedding_hero_photo', r.result);
-                              }
-                            };
-                            r.readAsDataURL(file);
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2. Story photo upload */}
-                <div className="border-t border-stone-100 pt-4">
-                  <span className="text-[10px] uppercase tracking-wider font-bold text-stone-500 mb-2 block">Foto da História de Amor</span>
-                  <div className="flex flex-col sm:flex-row gap-4 items-center">
-                    <img src={storyPhoto} className="w-24 h-20 object-cover rounded-lg border shrink-0 bg-stone-50" />
-                    
-                    <div
-                      onClick={() => document.getElementById('story-photo-custom-input')?.click()}
-                      className="flex-1 border-2 border-dashed border-stone-200 hover:border-wedding-burgundy hover:bg-rose-50/5 rounded-xl p-4 text-center cursor-pointer transition-all duration-300"
-                    >
-                      <Upload className="w-4 h-4 mx-auto text-stone-400 mb-1" />
-                      <p className="text-[10px] font-semibold text-stone-600">Arraste ou clique para selecionar</p>
-                      <input
-                        type="file"
-                        id="story-photo-custom-input"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={e => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const r = new FileReader();
-                            r.onload = () => {
-                              if (typeof r.result === 'string') {
-                                setStoryPhoto(r.result);
-                                localStorage.setItem('wedding_story_photo', r.result);
-                              }
-                            };
-                            r.readAsDataURL(file);
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-8 border-t border-stone-100 pt-4 flex justify-end">
-                <button
-                  onClick={() => setShowPhotoModal(false)}
-                  className="px-6 py-2.5 bg-wedding-navy hover:bg-slate-800 text-white rounded-xl text-xs font-semibold tracking-wider uppercase shadow-md cursor-pointer transition-colors"
-                >
-                  Concluir
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
       {/* Check-in Success Real-time Synchronized Overlay */}
       <AnimatePresence>
         {showCheckInOverlay && currentUser && (
@@ -949,7 +848,7 @@ export default function WeddingPlannerApp({ user, onLogout, onLogin }: { user?: 
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "spring", duration: 0.5 }}
-              className="bg-[#FDFCFB] border border-[#C5A880]/30 rounded-3xl max-w-lg w-full p-8 shadow-2xl relative z-10 text-stone-900 text-center animate-fade-in"
+              className="bg-[#F3FAF6] border-2 border-[#10B981] rounded-3xl max-w-md w-full p-6 shadow-2xl relative z-10 text-stone-900 text-left animate-fade-in"
             >
               {/* Elegant Close Button */}
               <button
@@ -959,52 +858,47 @@ export default function WeddingPlannerApp({ user, onLogout, onLogin }: { user?: 
                 <X className="w-5 h-5" />
               </button>
 
-              {/* Monogram / Header Icon */}
-              <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-[#C5A880] to-[#800020] flex items-center justify-center text-white mx-auto mb-6 shadow-lg shadow-[#800020]/10">
-                <Check className="w-8 h-8 stroke-2" />
+              {/* Status Header */}
+              <div className="flex items-start gap-3.5 mb-4">
+                <CheckCircle2 className="w-8 h-8 text-[#10B981] shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-serif text-lg font-bold text-[#065F46]">
+                    Check-in Confirmado ✓
+                  </h3>
+                  <p className="text-xs text-stone-500 font-medium mt-0.5">
+                    {checkInTime || new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </p>
+                </div>
               </div>
 
-              <span className="text-[10px] uppercase font-bold text-[#800020] tracking-[0.25em] block mb-2">Check-in Concluído</span>
-              <h2 className="font-serif text-2xl text-wedding-navy mb-2">Bem-vindo(a) ao Casamento!</h2>
-              <p className="text-stone-500 text-sm mb-6 max-w-md mx-auto">
-                Olá <strong>{currentUser.name}</strong>, é uma honra contar com a sua presença no dia mais feliz das nossas vidas.
-              </p>
+              {/* Guest Details */}
+              <div className="flex items-center gap-2 mb-3">
+                <User className="w-4 h-4 text-stone-400 shrink-0" />
+                <span className="font-bold text-stone-900 text-base">{currentUser.name}</span>
+                <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1 ${
+                  currentUser.side === 'Bride'
+                    ? 'bg-rose-100 text-rose-700'
+                    : 'bg-blue-100 text-blue-700'
+                }`}>
+                  {currentUser.side === 'Bride' ? '♥ Noiva' : '♦ Noivo'}
+                </span>
+              </div>
 
-              {/* Table details block */}
-              <div className="bg-white border border-[#C5A880]/20 rounded-2xl p-6 shadow-xs text-left mb-6 space-y-4">
-                <div>
-                  <span className="text-[9px] uppercase font-bold text-stone-400 block mb-0.5">Sua Mesa Reservada</span>
-                  <h3 className="font-serif text-lg font-bold text-wedding-navy">{guestTableName || `Mesa ${currentUser.tableId}`}</h3>
-                </div>
+              {/* Table details */}
+              <div className="flex items-center gap-2 mb-4">
+                <MapPin className="w-4 h-4 text-stone-400 shrink-0" />
+                <span className="text-sm text-stone-750">Mesa <strong className="text-base text-stone-900 font-bold">{guestTableName || currentUser.tableId || 'Não definida'}</strong></span>
+              </div>
 
-                <div className="flex items-start gap-2.5 text-xs text-stone-600 border-t border-stone-100 pt-3">
-                  <MapPin className="w-4 h-4 text-wedding-gold shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold text-stone-700 block">Indicações de Localização</span>
-                    <p className="mt-0.5 text-[11px] leading-relaxed">
-                      {getTableLocation(currentUser.tableId, currentUser.vip)}
-                    </p>
-                  </div>
-                </div>
-
-                {currentUser?.tableId && (
-                  <div className="border-t border-stone-100 pt-3">
-                    <span className="text-[9px] uppercase font-bold text-stone-400 block mb-2">Companheiros de Mesa</span>
-                    <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
-                      {getTableCompanions(currentUser, guests).map((name, i) => (
-                        <span key={i} className="text-[10px] bg-stone-50 border border-stone-150 px-2.5 py-1 rounded-full text-stone-700 font-medium">
-                          👤 {name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+              {/* Yellow Alert Box */}
+              <div className="bg-[#FEF9E7] border border-[#FDE68A] rounded-xl p-4 text-xs font-semibold text-amber-800 leading-relaxed mb-5">
+                {currentUser.name}, o seu check-in {currentUser.checkIn && prevCheckInRef.current ? 'já havia sido realizado' : 'foi realizado com sucesso'}. Seja bem-vindo(a){currentUser.checkIn && prevCheckInRef.current ? ' novamente' : ''}! Mesa: {currentUser.tableId || 'Não definida'}
               </div>
 
               {/* Action Button */}
               <button
                 onClick={() => setShowCheckInOverlay(false)}
-                className="w-full bg-wedding-navy hover:bg-[#800020] text-white py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-colors shadow-md hover:shadow-lg active:scale-[0.98]"
+                className="w-full py-3 bg-white hover:bg-stone-50 border border-stone-250 text-stone-650 rounded-xl text-xs font-semibold tracking-widest uppercase transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
               >
                 Aceder ao Meu Portal
               </button>

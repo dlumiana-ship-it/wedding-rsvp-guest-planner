@@ -5,8 +5,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
 import { 
   Heart, Calendar, MapPin, Music, Utensils, Info, Check, 
-  ChevronDown, ChevronUp, Edit3, MessageSquare, Compass, Send, Plus, Trash2, Sparkles, PartyPopper 
+  ChevronDown, ChevronUp, Edit3, MessageSquare, Compass, Send, Plus, Trash2, Sparkles, PartyPopper,
+  CheckCircle2, User, X
 } from 'lucide-react';
+import MusicRequestWidget from './MusicRequestWidget';
 
 interface Companion {
   id?: string;
@@ -40,6 +42,7 @@ interface GuestCenterProps {
   onUpdateGuest: (updated: Guest) => void;
   onLogout: () => void;
   tableCompanions?: string[];
+  giftSuggestions?: any[];
 }
 
 const DIET_OPTIONS = [
@@ -52,9 +55,24 @@ const DIET_OPTIONS = [
   'Alergias (Especificar)',
 ];
 
-export default function GuestCenter({ guest, tableName, onUpdateGuest, onLogout }: GuestCenterProps) {
+export default function GuestCenter({ guest, tableName, onUpdateGuest, onLogout, tableCompanions, giftSuggestions = [] }: GuestCenterProps) {
   const [showEditModal, setShowEditModal] = useState(false);
-  const [giftDeliveryMethod, setGiftDeliveryMethod] = useState(guest.giftDeliveryMethod || 'Ainda não decidi');
+  
+  const parseGiftData = (methodString: string | null | undefined) => {
+    if (!methodString) return { method: 'Ainda não decidi', name: '', notes: '' };
+    const parts = methodString.split('|').map(s => s.trim());
+    return {
+      method: parts[0] || 'Ainda não decidi',
+      name: parts[1] || '',
+      notes: parts[2] || ''
+    };
+  };
+
+  const initialGiftData = parseGiftData(guest.giftDeliveryMethod);
+  const [deliveryMethod, setDeliveryMethod] = useState(initialGiftData.method);
+  const [giftName, setGiftName] = useState(initialGiftData.name);
+  const [giftNotes, setGiftNotes] = useState(initialGiftData.notes);
+
   const [loading, setLoading] = useState(false);
   const [confirmingPresence, setConfirmingPresence] = useState(false);
   const [showConfirmSuccess, setShowConfirmSuccess] = useState(false);
@@ -101,13 +119,14 @@ export default function GuestCenter({ guest, tableName, onUpdateGuest, onLogout 
 
   const handleSaveChanges = async () => {
     setLoading(true);
+    const combinedGiftString = `${deliveryMethod} | ${giftName} | ${giftNotes}`;
     try {
       const res = await fetch('/api/guests', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: guest.id,
-          giftDeliveryMethod
+          giftDeliveryMethod: combinedGiftString
         }),
       });
 
@@ -127,6 +146,7 @@ export default function GuestCenter({ guest, tableName, onUpdateGuest, onLogout 
   };
 
   const handleConfirmPresence = async () => {
+    if (confirmingPresence || guest.status === 'CONFIRMED') return;
     setConfirmingPresence(true);
     try {
       const res = await fetch('/api/guests', {
@@ -212,7 +232,11 @@ export default function GuestCenter({ guest, tableName, onUpdateGuest, onLogout 
             </span>
           </div>
 
-          <h3 className="font-serif text-xl text-[#001B3D] mb-1">Olá, {guest.name}!</h3>
+          <h3 className="font-serif text-xl text-[#001B3D] mb-1">
+            Olá, {guest.companions?.[0]?.name 
+              ? `${guest.name.split(' ')[0]} & ${guest.companions[0].name.split(' ')[0]}` 
+              : guest.name}!
+          </h3>
           <p className="text-xs text-stone-500 mb-6">Este é o seu portal exclusivo do casamento.</p>
 
           <div className="flex flex-col items-center p-6 bg-stone-50 border border-stone-100 rounded-2xl mb-4">
@@ -222,34 +246,61 @@ export default function GuestCenter({ guest, tableName, onUpdateGuest, onLogout 
           </div>
 
           {guest.checkIn ? (
-            <div className="bg-emerald-50 border border-emerald-250 rounded-2xl p-4 text-left space-y-3 shadow-inner">
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-full bg-emerald-600 flex items-center justify-center text-white shrink-0">
-                  <Check className="w-3.5 h-3.5" />
-                </div>
-                <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Check-in Concluído</span>
-              </div>
-              <div>
-                <span className="text-[9px] uppercase font-bold text-stone-400 block mb-0.5">Sua Mesa</span>
-                <span className="font-serif text-base font-bold text-wedding-navy">
-                  {tableName || `Mesa ${guest.tableId}`}
-                </span>
-                <div className="flex items-start gap-1.5 text-[10px] text-stone-650 mt-2 border-t border-emerald-100/60 pt-2">
-                  <MapPin className="w-3.5 h-3.5 text-wedding-gold shrink-0 mt-0.5" />
-                  <p className="leading-relaxed text-[10.5px]">
-                    {guest.tableId ? (
-                      guest.vip ? "Ala de Honra: Próxima à mesa presidencial de Lumiana e Vicente." :
-                      guest.tableId % 2 === 0 ? "Ala Esquerda: Siga pelo corredor esquerdo em direção ao jardim suspenso." :
-                      "Ala Direita: Siga pelo corredor direito próximo ao piano de cauda."
-                    ) : "Aguarde definição de mesa pela recepção."}
+            <div className="bg-[#F3FAF6] border-2 border-[#10B981] rounded-2xl p-5 text-left space-y-4 shadow-sm">
+              {/* Status Header */}
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="w-6 h-6 text-[#10B981] shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-serif text-sm font-bold text-[#065F46] tracking-wide">
+                    Check-in Confirmado ✓
+                  </h4>
+                  <p className="text-[9px] text-stone-500 font-medium mt-0.5">
+                    {new Date().toLocaleDateString('pt-PT')}
                   </p>
                 </div>
               </div>
+
+              {/* Guest Details */}
+              <div className="flex items-center gap-2 border-t border-emerald-100/60 pt-3">
+                <User className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                <span className="font-bold text-stone-850 text-xs truncate max-w-[120px]">{guest.name}</span>
+                <span className={`text-[8px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
+                  guest.side === 'Bride'
+                    ? 'bg-rose-100 text-rose-700'
+                    : 'bg-blue-100 text-blue-700'
+                }`}>
+                  {guest.side === 'Bride' ? '♥ Noiva' : '♦ Noivo'}
+                </span>
+              </div>
+
+              {/* Table details */}
+              <div className="flex items-center gap-2">
+                <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                <span className="text-xs text-stone-700">Mesa <strong className="text-stone-900 font-bold">{tableName || guest.tableId || 'Não definida'}</strong></span>
+              </div>
+
+              {/* Yellow Alert Box */}
+              <div className="bg-[#FEF9E7] border border-[#FDE68A] rounded-xl p-3 text-[10px] font-semibold text-amber-800 leading-relaxed">
+                {guest.name}, o seu check-in foi realizado com sucesso. Seja bem-vindo(a)! Mesa: {guest.tableId || 'Não definida'}
+              </div>
+
+              {/* Table indications */}
+              <div className="border-t border-emerald-100/60 pt-3">
+                <span className="text-[9px] uppercase font-bold text-stone-400 block mb-1">Indicações da Mesa</span>
+                <p className="leading-relaxed text-[10px] text-stone-600">
+                  {guest.tableId ? (
+                    guest.vip ? "Ala de Honra: Próxima à mesa presidencial de Lumiana e Vicente." :
+                    guest.tableId % 2 === 0 ? "Ala Esquerda: Siga pelo corredor esquerdo em direção ao jardim suspenso." :
+                    "Ala Direita: Siga pelo corredor direito próximo ao piano de cauda."
+                  ) : "Aguarde definição de mesa pela recepção."}
+                </p>
+              </div>
+
               {tableCompanions && tableCompanions.length > 0 && (
-                <div className="border-t border-emerald-100/60 pt-2">
-                  <span className="text-[9px] uppercase font-bold text-stone-450 block mb-1.5">Na sua mesa estarão:</span>
+                <div className="border-t border-emerald-100/60 pt-3">
+                  <span className="text-[9px] uppercase font-bold text-stone-400 block mb-1.5">Na sua mesa estarão:</span>
                   <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-1">
-                    {tableCompanions.map((name, i) => {
+                    {tableCompanions.map((name: string, i: number) => {
                       const displayName = name.includes('(') 
                         ? `${name.split(' ')[0]} ${name.substring(name.indexOf('('))}` 
                         : name.split(' ')[0];
@@ -302,6 +353,28 @@ export default function GuestCenter({ guest, tableName, onUpdateGuest, onLogout 
           </div>
         )}
 
+        {giftName && (
+          <div className="mt-3 bg-stone-50 border border-stone-200/60 rounded-xl p-3.5 text-left space-y-1.5">
+            <span className="text-[9px] uppercase font-bold text-stone-400 block mb-0.5">Presente Selecionado</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🎁</span>
+              <div>
+                <span className="text-xs font-bold text-wedding-navy block truncate max-w-[220px]">
+                  {giftName}
+                </span>
+                {giftNotes && (
+                  <span className="text-[9px] text-stone-500 block truncate max-w-[220px] italic">
+                    {giftNotes}
+                  </span>
+                )}
+              </div>
+            </div>
+            <span className="text-[9px] text-stone-400 block pt-1 border-t border-stone-200/50">
+              Método: {deliveryMethod}
+            </span>
+          </div>
+        )}
+
         {canEdit ? (
           <button
             onClick={() => setShowEditModal(true)}
@@ -348,29 +421,15 @@ export default function GuestCenter({ guest, tableName, onUpdateGuest, onLogout 
             </div>
           </div>
 
-          {/* Music requests overview */}
-          <div className="bg-white border border-[#001B3D]/10 rounded-3xl p-6 flex flex-col justify-between">
-            <div>
-              <h4 className="font-serif text-base text-wedding-navy border-b border-stone-100 pb-2 mb-3">
-                Pedidos de Música
-              </h4>
-
-              {savedSongs.length > 0 ? (
-                <div className="space-y-2 max-h-[140px] overflow-y-auto pr-1">
-                  {savedSongs.map((song, i) => (
-                    <div key={i} className="text-xs text-stone-700 bg-[#C5A880]/10 border border-[#C5A880]/10 rounded-lg px-3 py-2 flex items-center gap-2">
-                      <Music className="w-3.5 h-3.5 text-wedding-burgundy shrink-0" />
-                      <span className="font-medium truncate">&ldquo;{song}&rdquo;</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-stone-400 italic">Nenhuma música sugerida ainda.</p>
-              )}
-            </div>
-            
-            <p className="text-[10px] text-stone-400 mt-4">Pode pedir mais músicas diretamente ao DJ no formulário principal de músicas na recepção.</p>
-          </div>
+          {/* Music requests widget */}
+          <MusicRequestWidget
+            currentMusic={guest.musicRequest || undefined}
+            userId={guest.id}
+            userName={guest.name}
+            onMusicSaved={(newMusic: string) => {
+              onUpdateGuest({ ...guest, musicRequest: newMusic });
+            }}
+          />
         </div>
 
         {/* Digital Wall interactive panel */}
@@ -444,20 +503,69 @@ export default function GuestCenter({ guest, tableName, onUpdateGuest, onLogout 
               <h3 className="font-serif text-xl text-wedding-navy mb-6">Atualizar Informação</h3>
 
               <div className="space-y-6">
-                {/* 1. GIFT DELIVERY METHOD */}
                 <div className="grid grid-cols-1 gap-4">
+                  {/* 1. DELIVERY METHOD */}
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] uppercase font-bold text-stone-400">Entrega de Presentes</label>
                     <select
-                      value={giftDeliveryMethod}
-                      onChange={(e) => setGiftDeliveryMethod(e.target.value)}
-                      className="border border-stone-200 rounded-xl p-2.5 bg-stone-50 text-xs focus:outline-none"
+                      value={deliveryMethod}
+                      onChange={(e) => setDeliveryMethod(e.target.value)}
+                      className="border border-stone-200 rounded-xl p-2.5 bg-stone-50 text-xs focus:outline-none text-stone-850"
                     >
                       <option value="Ainda não decidi">Ainda não decidi</option>
                       <option value="Vou entregar na confirmação (via App)">Vou entregar agora pela plataforma / App</option>
                       <option value="Vou levar no dia do Evento (Cestão)">Vou levar fisicamente no dia do Evento (Cestão)</option>
                       <option value="Não irei oferecer presente">Não irei oferecer presente desta vez</option>
                     </select>
+                  </div>
+
+                  {/* 2. SELECT SUGGESTED GIFT */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] uppercase font-bold text-stone-400">Escolha o Presente do Cestão</label>
+                    <select
+                      value={giftSuggestions.some(g => g.name === giftName) ? giftName : (giftName ? "Outro Presente Customizado" : "")}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "Outro Presente Customizado") {
+                          setGiftName("");
+                        } else {
+                          setGiftName(val);
+                        }
+                      }}
+                      className="border border-stone-200 rounded-xl p-2.5 bg-stone-50 text-xs focus:outline-none text-stone-850"
+                    >
+                      <option value="">-- Selecione uma sugestão ou escreva abaixo --</option>
+                      {giftSuggestions.map((suggestion: any) => (
+                        <option key={suggestion.id} value={suggestion.name}>
+                          {suggestion.icon} {suggestion.name}
+                        </option>
+                      ))}
+                      <option value="Outro Presente Customizado">Outro Presente Customizado (Preencher abaixo)</option>
+                    </select>
+                  </div>
+
+                  {/* 3. CUSTOM GIFT NAME OR DETAILS */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] uppercase font-bold text-stone-400">Nome do Presente / Detalhes (Ex: Marca, Modelo)</label>
+                    <input
+                      type="text"
+                      value={giftName}
+                      onChange={(e) => setGiftName(e.target.value)}
+                      placeholder="Ex: Micro-ondas Consul 20L, ou escreva aqui..."
+                      className="border border-stone-200 rounded-xl p-2.5 bg-stone-50 text-xs focus:outline-none text-stone-850"
+                    />
+                  </div>
+
+                  {/* 4. ADDITIONAL GIFT NOTES */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] uppercase font-bold text-stone-400">Observações Opcionais</label>
+                    <input
+                      type="text"
+                      value={giftNotes}
+                      onChange={(e) => setGiftNotes(e.target.value)}
+                      placeholder="Ex: Voltagem 220V, cor preta, ou mensagem especial..."
+                      className="border border-stone-200 rounded-xl p-2.5 bg-stone-50 text-xs focus:outline-none text-stone-850"
+                    />
                   </div>
                 </div>
               </div>

@@ -130,24 +130,58 @@ export default function QRScannerPanel({ onScanSuccess }: QRScannerPanelProps) {
         qrCode = new Html5Qrcode('qr-scanner-container');
         html5QrCodeRef.current = qrCode;
 
-        qrCode.start(
-          { facingMode: 'environment' },
-          { fps: 15, qrbox: { width: 260, height: 260 }, aspectRatio: 1.0 },
-          (decodedText) => {
-            processQrData(decodedText);
-          },
-          () => { /* scan frame errors are normal */ }
-        ).catch((err: any) => {
+        Html5Qrcode.getCameras().then(devices => {
           if (!mounted) return;
-          const msg = String(err).toLowerCase();
-          if (msg.includes('permission') || msg.includes('notallowed')) {
-            setCameraError('Permissão de câmera negada. Autorize nas definições do browser.');
-          } else if (msg.includes('notfound') || msg.includes('no camera')) {
+          if (!devices || devices.length === 0) {
             setCameraError('Nenhuma câmera detetada neste dispositivo.');
-          } else {
-            setCameraError('Não foi possível iniciar a câmera. Verifique se outra app está a usar a câmera.');
+            setScanning(false);
+            return;
           }
-          setScanning(false);
+
+          // Procurar câmara traseira (back/rear/traseira)
+          let cameraId = devices[0].id; // Fallback: primeira câmara
+          const backCamera = devices.find(device => 
+            device.label.toLowerCase().includes('back') || 
+            device.label.toLowerCase().includes('traseira') ||
+            device.label.toLowerCase().includes('environment') ||
+            device.label.toLowerCase().includes('rear')
+          );
+          if (backCamera) {
+            cameraId = backCamera.id;
+          }
+
+          qrCode.start(
+            cameraId,
+            { fps: 15, qrbox: { width: 260, height: 260 }, aspectRatio: 1.0 },
+            (decodedText: string) => {
+              processQrData(decodedText);
+            },
+            () => { /* scan frame errors are normal */ }
+          ).catch((err: any) => {
+            if (!mounted) return;
+            const msg = String(err).toLowerCase();
+            if (msg.includes('permission') || msg.includes('notallowed')) {
+              setCameraError('Permissão de câmera negada. Autorize nas definições do browser.');
+            } else {
+              setCameraError('Não foi possível iniciar a câmera selecionada. Verifique se outra app a está a usar.');
+            }
+            setScanning(false);
+          });
+        }).catch(err => {
+          if (!mounted) return;
+          // Se getCameras falhar, tenta iniciar diretamente com facingMode
+          qrCode.start(
+            { facingMode: 'environment' },
+            { fps: 15, qrbox: { width: 260, height: 260 }, aspectRatio: 1.0 },
+            (decodedText: string) => {
+              processQrData(decodedText);
+            },
+            () => { /* scan frame errors are normal */ }
+          ).catch((startErr: any) => {
+            if (!mounted) return;
+            setCameraError('Erro ao iniciar câmara: ' + (startErr.message || startErr));
+            setScanning(false);
+          });
         });
       });
     }, 150);
@@ -264,6 +298,30 @@ export default function QRScannerPanel({ onScanSuccess }: QRScannerPanelProps) {
             <div className={`relative rounded-2xl overflow-hidden bg-stone-900 aspect-square flex items-center justify-center ${
               scanning ? 'ring-2 ring-wedding-gold ring-offset-2' : ''
             }`}>
+              {/* CSS overrides to force html5-qrcode video elements to fill the container and not collapse */}
+              <style dangerouslySetInnerHTML={{ __html: `
+                #qr-scanner-container {
+                  width: 100% !important;
+                  height: 100% !important;
+                  background-color: #1c1917 !important;
+                }
+                #qr-scanner-container video {
+                  width: 100% !important;
+                  height: 100% !important;
+                  object-fit: cover !important;
+                  border-radius: 1rem !important;
+                }
+                #qr-scanner-container > div {
+                  width: 100% !important;
+                  height: 100% !important;
+                  border: none !important;
+                }
+                #qr-scanner-container__video_container {
+                  width: 100% !important;
+                  height: 100% !important;
+                }
+              `}} />
+
               {/* Camera container (always mounted but hidden when not scanning) */}
               <div
                 id="qr-scanner-container"

@@ -54,7 +54,7 @@ export default function RsvpForm({ guest, onRsvpSubmitted }: RsvpFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isAttending === null) return;
+    if (isAttending === null || loading) return;
 
     setLoading(true);
     setError('');
@@ -131,6 +131,40 @@ export default function RsvpForm({ guest, onRsvpSubmitted }: RsvpFormProps) {
       setLoading(false);
     }
   };
+
+  if (guest.status === 'CONFIRMED') {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-3xl border border-wedding-gold/20 p-8 md:p-12 text-center flex flex-col items-center shadow-lg relative overflow-hidden"
+      >
+        <div className="absolute inset-0 pointer-events-none opacity-20">
+          <div className="absolute top-10 left-10 w-2 h-2 bg-wedding-gold rounded-full animate-ping" />
+          <div className="absolute bottom-10 right-10 w-3 h-3 bg-wedding-burgundy rounded-full animate-ping" />
+        </div>
+
+        <motion.div
+          initial={{ rotate: -15, scale: 0 }}
+          animate={{ rotate: 0, scale: 1 }}
+          transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
+          className="w-16 h-16 bg-wedding-burgundy text-white rounded-full flex items-center justify-center mb-6 shadow-md"
+        >
+          <Heart className="w-8 h-8 fill-current animate-pulse" />
+        </motion.div>
+
+        <h3 className="font-serif text-2xl md:text-3xl text-[#001B3D] mb-4 font-normal">
+          Presença já Confirmada!
+        </h3>
+        <p className="text-stone-600 text-sm md:text-base max-w-md leading-relaxed">
+          A sua presença já se encontra confirmada no nosso sistema. Muito obrigado por fazer parte deste momento tão especial!
+        </p>
+
+        <div className="w-20 h-0.5 bg-wedding-gold/30 my-6" />
+        <p className="text-xs text-stone-400 animate-pulse">A aceder à sua área reservada...</p>
+      </motion.div>
+    );
+  }
 
   if (success) {
     return (

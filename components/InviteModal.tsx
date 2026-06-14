@@ -4,11 +4,16 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Printer, MessageCircle, Copy, Check, MapPin, Gift, Church, FileText, Link as LinkIcon } from 'lucide-react';
 
+interface Companion {
+  name: string;
+}
+
 interface Guest {
   id: string;
   name: string;
   side: 'Bride' | 'Groom';
   phone?: string;
+  companions?: Companion[];
 }
 
 interface InviteModalProps {
@@ -43,7 +48,10 @@ export default function InviteModal({ isOpen, onClose, guest }: InviteModalProps
 
   const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://lumianaevicente.com';
   const rsvpUrl = appUrl;
-  const firstName = guest.name.split(' ')[0];
+  const partner = guest.companions?.[0]?.name;
+  const displayName = partner ? `${guest.name} & ${partner}` : guest.name;
+  const greetingName = partner ? `${guest.name.split(' ')[0]} & ${partner.split(' ')[0]}` : guest.name.split(' ')[0];
+  const firstName = greetingName;
 
   const primaryColor = '#7B8B6F'; // Sage Green
   const goldColor = '#B89759'; // Elegant Gold
@@ -260,7 +268,7 @@ export default function InviteModal({ isOpen, onClose, guest }: InviteModalProps
                       ESPECIALMENTE PARA
                     </p>
                     <p style={{ fontFamily: "'Playfair Display', serif", fontSize: '16px', fontWeight: 600, color: darkText, letterSpacing: '0.5px' }}>
-                      {guest.name}
+                      {displayName}
                     </p>
                   </div>
 

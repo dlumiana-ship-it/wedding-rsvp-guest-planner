@@ -22,6 +22,8 @@ export default function AddGuestModal({ isOpen, onClose, onSuccess }: AddGuestMo
   const [music, setMusic] = useState('');
   const [accommodation, setAccommodation] = useState<'Yes' | 'No'>('No');
   const [accommodationDetails, setAccommodationDetails] = useState('');
+  const [isCouple, setIsCouple] = useState(false);
+  const [partnerName, setPartnerName] = useState('');
 
   // Staff-specific fields
   const [role, setRole] = useState<'STAFF' | 'MC' | 'DJ'>('STAFF');
@@ -40,6 +42,8 @@ export default function AddGuestModal({ isOpen, onClose, onSuccess }: AddGuestMo
     setAccommodationDetails('');
     setRole('STAFF');
     setError('');
+    setIsCouple(false);
+    setPartnerName('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -64,6 +68,9 @@ export default function AddGuestModal({ isOpen, onClose, onSuccess }: AddGuestMo
       musicRequest: activeTab === 'guest' ? music.trim() : null,
       needsAccommodation: activeTab === 'guest' ? (accommodation === 'Yes' ? 'Sim' : 'Não') : 'Não',
       accommodationDetails: activeTab === 'guest' ? accommodationDetails.trim() : null,
+      companions: activeTab === 'guest' && isCouple && partnerName.trim()
+        ? [{ name: partnerName.trim(), diet: 'Nenhuma' }]
+        : undefined,
     };
 
     try {
@@ -187,6 +194,42 @@ export default function AddGuestModal({ isOpen, onClose, onSuccess }: AddGuestMo
 
             {activeTab === 'guest' ? (
               <>
+                {/* Opção de Casal */}
+                <div className="bg-stone-50 border border-stone-200/60 rounded-2xl p-4 space-y-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isCouple}
+                      onChange={(e) => setIsCouple(e.target.checked)}
+                      className="w-4 h-4 rounded text-wedding-navy border-stone-300 focus:ring-wedding-navy cursor-pointer"
+                    />
+                    <span className="text-xs font-bold text-stone-700 select-none">
+                      Enviar convite de casal
+                    </span>
+                  </label>
+
+                  {isCouple && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      className="space-y-1.5 pt-1 overflow-hidden"
+                    >
+                      <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider" htmlFor="add-partner-name">
+                        Nome do Cônjuge / Parceiro *
+                      </label>
+                      <input
+                        type="text"
+                        required={isCouple}
+                        id="add-partner-name"
+                        placeholder="Ex: Maria Machava"
+                        value={partnerName}
+                        onChange={(e) => setPartnerName(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-wedding-navy text-stone-850"
+                      />
+                    </motion.div>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">
