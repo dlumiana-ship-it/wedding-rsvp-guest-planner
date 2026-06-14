@@ -19,6 +19,7 @@ interface InviteModalProps {
 
 export default function InviteModal({ isOpen, onClose, guest }: InviteModalProps) {
   const [copied, setCopied] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   if (!guest) return null;
@@ -69,8 +70,6 @@ export default function InviteModal({ isOpen, onClose, guest }: InviteModalProps
   };
 
   // ── Actions ───────────────────────────────────────────────────────────────
-  const [isGenerating, setIsGenerating] = useState(false);
-
   const handleCopyLink = async () => {
     await navigator.clipboard.writeText(rsvpUrl);
     setCopied(true);
