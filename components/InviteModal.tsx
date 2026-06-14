@@ -116,16 +116,23 @@ export default function InviteModal({ isOpen, onClose, guest }: InviteModalProps
       const pdfBlob = pdf.output('blob');
       const file = new File([pdfBlob], `Convite_${firstName}.pdf`, { type: 'application/pdf' });
       
+      let shared = false;
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: 'Convite de Casamento',
-          text: `Convite de Casamento para ${firstName}`
-        });
-      } else {
-        // Fallback for devices without native share
+        try {
+          await navigator.share({
+            files: [file],
+            title: 'Convite de Casamento',
+            text: `Convite de Casamento para ${firstName}`
+          });
+          shared = true;
+        } catch (shareErr) {
+          console.warn("Navegador bloqueou share por falta de user gesture imediato:", shareErr);
+        }
+      }
+      
+      if (!shared) {
         pdf.save(`Convite_${firstName}.pdf`);
-        alert("O PDF foi descarregado. Como o seu navegador atual não suporta a partilha automática, pode agora enviá-lo pelo WhatsApp anexando o ficheiro.");
+        alert("O PDF foi descarregado para o seu aparelho.\n\nComo o seu navegador bloqueia partilhas automáticas demoradas, pode agora ir ao WhatsApp e anexar o ficheiro que acabou de ser descarregado!");
       }
     } catch (e) {
       console.error(e);
