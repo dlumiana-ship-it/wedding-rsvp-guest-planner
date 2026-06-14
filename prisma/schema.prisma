@@ -9,33 +9,50 @@ generator client {
 }
 
 model Guest {
-  id                   String   @id
+  id                   String      @id
   name                 String
   side                 String
-  phone                String   @unique
-  role                 String   @default("GUEST")
+  phone                String      @unique
+  role                 String      @default("GUEST")
+  status               String      @default("PENDING") // PENDING, CONFIRMED, DECLINED
+  vip                  Boolean     @default(false)
   diet                 String
   dietDetails          String?
   musicRequest         String?
   needsAccommodation   String
   accommodationDetails String?
+  rsvpMessage          String?
+  giftDeliveryMethod   String?     @default("Ainda não decidi")
   tableId              Int?
-  checkIn              Boolean  @default(false)
+  checkIn              Boolean     @default(false)
   qrCode               String?
-  timestamp            DateTime @default(now())
+  timestamp            DateTime    @default(now())
+  companions           Companion[]
+}
+
+model Companion {
+  id          String   @id @default(cuid())
+  name        String
+  diet        String   @default("Nenhuma")
+  dietDetails String?
+  guestId     String
+  guest       Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
 }
 
 model Song {
-  id          String   @id @default(cuid())
-  title       String
-  artist      String
-  requestedBy String?
-  category    String   @default("recepcao")
-  position    Int      @default(0)
-  isPlayed    Boolean  @default(false)
-  duration    String?
-  notes       String?
-  createdAt   DateTime @default(now())
+  id            String   @id @default(cuid())
+  title         String
+  artist        String
+  requestedBy   String?
+  justification String?
+  category      String   @default("recepcao")
+  position      Int      @default(0)
+  isPlayed      Boolean  @default(false)
+  status        String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  duration      String?
+  notes         String?
+  createdAt     DateTime @default(now())
 }
 
 model GiftPresenter {
@@ -46,5 +63,39 @@ model GiftPresenter {
   hasGiven  Boolean  @default(false)
   note      String?
   group     String?
+  createdAt DateTime @default(now())
+}
+
+model Table {
+  id        Int      @id @default(autoincrement())
+  name      String
+  capacity  Int      @default(6)
+  vip       Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model WallMessage {
+  id        String   @id @default(cuid())
+  guestName String
+  guestId   String?
+  content   String
+  approved  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model GalleryPhoto {
+  id           String   @id @default(cuid())
+  url          String
+  approved     Boolean  @default(false)
+  uploadedBy   String
+  uploadedById String?
+  createdAt    DateTime @default(now())
+}
+
+model GiftSuggestion {
+  id        String   @id @default(cuid())
+  name      String
+  icon      String   @default("🎁")
+  desc      String?
   createdAt DateTime @default(now())
 }

@@ -13,5 +13,5 @@ export default function Home() {
     return <AuthScreen onLogin={setUser} />;
   }
 
-  return <WeddingApp user={user} onLogout={() => setUser(null)} />;
+  return <WeddingApp user={user} onLogout={() => setUser(null)} onLogin={setUser} />;
 }

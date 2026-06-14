@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Printer, MessageCircle, Copy, Check, MapPin, Gift, Church, FileText, Link as LinkIcon } from 'lucide-react';
 
@@ -21,6 +21,23 @@ export default function InviteModal({ isOpen, onClose, guest }: InviteModalProps
   const [copied, setCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  // Preloaded library references to preserve User Gesture on click
+  const html2canvasLib = useRef<any>(null);
+  const jsPdfLib = useRef<any>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      // Preload heavy rendering libraries dynamically on modal open to keep click handler execution synchronous
+      import('html2canvas').then((m) => {
+        html2canvasLib.current = m.default;
+      }).catch(err => console.error("Failed to preload html2canvas:", err));
+      
+      import('jspdf').then((m) => {
+        jsPdfLib.current = m.jsPDF;
+      }).catch(err => console.error("Failed to preload jspdf:", err));
+    }
+  }, [isOpen]);
 
   if (!guest) return null;
 
@@ -79,14 +96,17 @@ export default function InviteModal({ isOpen, onClose, guest }: InviteModalProps
   const handleWhatsAppLink = () => {
     const text = `Olá ${firstName}! 🌿\n\n` +
       `Temos a alegria de partilhar consigo o convite para o nosso casamento.\n\n` +
-      `📅 29 de Agosto de 2026\n📍 Maputo\n\n` +
-      `Clique no link abaixo para aceder ao convite interativo e confirmar a sua presença:\n` +
-      `👉 ${rsvpUrl}\n\n` +
+      `📅 12 de Setembro de 2026\n📍 Maputo\n\n` +
+      `👉 CLIQUE NESTE LINK PARA ENTRAR E CONFIRMAR:\n` +
+      `🔗 ${rsvpUrl} 🔗\n\n` +
       `Com carinho,\nLumiana & Vicente`;
     
     // Auto-preencher número se existir
     let phone = guest.phone || '';
     phone = phone.replace(/\D/g, ''); // Remove tudo que não for número
+    if (phone.length === 9 && phone.startsWith('8')) {
+      phone = '258' + phone; // Moçambique country code
+    }
     const url = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
@@ -95,11 +115,17 @@ export default function InviteModal({ isOpen, onClose, guest }: InviteModalProps
     if (!cardRef.current) return;
     try {
       setIsGenerating(true);
-      // Wait for a tiny moment to ensure fonts are rendered
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      const html2canvas = (await import('html2canvas')).default;
-      const { jsPDF } = await import('jspdf');
+
+      // Check if preloaded libraries are available; if not, import immediately as fallback
+      let html2canvas = html2canvasLib.current;
+      let jsPDF = jsPdfLib.current;
+
+      if (!html2canvas || !jsPDF) {
+        const h2cModule = await import('html2canvas');
+        const jspdfModule = await import('jspdf');
+        html2canvas = h2cModule.default;
+        jsPDF = jspdfModule.jsPDF;
+      }
       
       const canvas = await html2canvas(cardRef.current, { scale: 2, useCORS: true, backgroundColor: paperColor });
       const imgData = canvas.toDataURL('image/png');
@@ -126,13 +152,13 @@ export default function InviteModal({ isOpen, onClose, guest }: InviteModalProps
           });
           shared = true;
         } catch (shareErr) {
-          console.warn("Navegador bloqueou share por falta de user gesture imediato:", shareErr);
+          console.warn("Navegador bloqueou share:", shareErr);
         }
       }
       
       if (!shared) {
         pdf.save(`Convite_${firstName}.pdf`);
-        alert("O PDF foi descarregado para o seu aparelho.\n\nComo o seu navegador bloqueia partilhas automáticas demoradas, pode agora ir ao WhatsApp e anexar o ficheiro que acabou de ser descarregado!");
+        alert("O PDF foi descarregado para o seu aparelho.\n\nCaso pretenda enviar por WhatsApp, pode anexar o ficheiro PDF que acabou de ser descarregado!");
       }
     } catch (e) {
       console.error(e);
@@ -268,8 +294,8 @@ export default function InviteModal({ isOpen, onClose, guest }: InviteModalProps
                     </div>
                     
                     <div style={{ textAlign: 'center', padding: '0 8px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '7px', fontWeight: 600, color: '#888', letterSpacing: '3px', margin: '0 0 2px 0' }}>AGOSTO</p>
-                      <p style={{ fontFamily: "'Playfair Display', serif", fontSize: '38px', color: darkText, margin: '-6px 0 -10px 0', lineHeight: '1' }}>29</p>
+                      <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '7px', fontWeight: 600, color: '#888', letterSpacing: '3px', margin: '0 0 2px 0' }}>SETEMBRO</p>
+                      <p style={{ fontFamily: "'Playfair Display', serif", fontSize: '38px', color: darkText, margin: '-6px 0 -10px 0', lineHeight: '1' }}>12</p>
                       <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '7px', fontWeight: 600, color: '#888', letterSpacing: '3px', margin: '6px 0 0 0' }}>2026</p>
                     </div>
 
@@ -280,8 +306,8 @@ export default function InviteModal({ isOpen, onClose, guest }: InviteModalProps
 
                   {/* Interactive Button */}
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', paddingBottom: '32px' }}>
-                    <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '5px', fontWeight: 600, color: goldColor, letterSpacing: '2px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <span style={{ fontSize: '7px' }}>✦</span> CLIQUE NO BOTÃO ABAIXO <span style={{ fontSize: '7px' }}>✦</span>
+                    <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '6.5px', fontWeight: 700, color: goldColor, letterSpacing: '2px', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span style={{ fontSize: '7px' }}>✦</span> CLIQUE NO LINK DO BOTÃO <span style={{ fontSize: '7px' }}>✦</span>
                     </p>
                     
                     <a href={rsvpUrl} target="_blank" rel="noreferrer" style={{
@@ -289,17 +315,20 @@ export default function InviteModal({ isOpen, onClose, guest }: InviteModalProps
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '10px',
-                      padding: '12px 32px',
-                      border: `1px solid ${primaryColor}60`,
+                      padding: '14px 36px',
+                      border: `2px solid ${goldColor}`,
                       borderRadius: '30px',
-                      color: primaryColor,
-                      textDecoration: 'none',
+                      color: '#FAF8F5',
+                      textDecoration: 'underline',
+                      textUnderlineOffset: '3px',
                       cursor: 'pointer',
-                      backgroundColor: 'transparent'
+                      backgroundColor: primaryColor,
+                      boxShadow: '0 8px 24px rgba(123, 139, 111, 0.35)',
+                      fontWeight: 700
                     }}>
-                      <LinkIcon size={12} strokeWidth={2} />
-                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '6px', fontWeight: 600, letterSpacing: '3px', textTransform: 'uppercase' }}>
-                        Confirmar Presença & Informações
+                      <LinkIcon size={12} strokeWidth={2.5} style={{ color: goldColor }} />
+                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '6.5px', fontWeight: 700, letterSpacing: '3px', textTransform: 'uppercase' }}>
+                        Confirmar Presença (Link)
                       </span>
                     </a>
                   </div>

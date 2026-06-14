@@ -56,6 +56,253 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { prompt, qrData } = body;
 
+    // ── DATABASE RESET BACKUP PATH ──────────────────────────────────────
+    if (prompt === 'reset_seed_db') {
+      await prisma.companion.deleteMany();
+      await prisma.wallMessage.deleteMany();
+      await prisma.galleryPhoto.deleteMany();
+      await prisma.table.deleteMany();
+      await prisma.song.deleteMany();
+      await prisma.guest.deleteMany();
+
+      const defaultTables = [
+        { id: 1, name: 'Mesa de Honra', capacity: 8, vip: true },
+        { id: 2, name: 'Família da Noiva (L&V)', capacity: 6, vip: false },
+        { id: 3, name: 'Família do Noivo', capacity: 6, vip: false },
+        { id: 4, name: 'Padrinhos & Madrinhas', capacity: 6, vip: true },
+        { id: 5, name: 'Amigos de Faculdade', capacity: 6, vip: false },
+        { id: 6, name: 'Colegas de Trabalho', capacity: 6, vip: false },
+      ];
+      for (const t of defaultTables) {
+        await prisma.table.create({ data: t });
+      }
+
+      const guestsToSeed = [
+        {
+          id: 'staff-id-uuid',
+          name: 'Equipe Cerimonial',
+          side: 'Bride',
+          phone: '+258840000000',
+          role: 'STAFF',
+          status: 'CONFIRMED',
+          vip: true,
+          diet: 'Nenhuma',
+          dietDetails: null,
+          musicRequest: null,
+          needsAccommodation: 'Não',
+          accommodationDetails: null,
+          tableId: null,
+          checkIn: false,
+          qrCode: null,
+        },
+        {
+          id: 'guest-1-uuid',
+          name: 'Ana Beatriz Machava',
+          side: 'Bride',
+          phone: '+258840001111',
+          role: 'GUEST',
+          status: 'CONFIRMED',
+          vip: true,
+          diet: 'Nenhuma',
+          dietDetails: null,
+          musicRequest: 'Amor de Mel - Lizha James',
+          needsAccommodation: 'Não',
+          accommodationDetails: null,
+          tableId: 1,
+          checkIn: false,
+          qrCode: 'qr-guest-1',
+          rsvpMessage: 'Mal posso esperar para ver a noiva mais linda entrar na igreja! Contem comigo!',
+        },
+        {
+          id: 'guest-2-uuid',
+          name: 'Carlos Manuel Cossa',
+          side: 'Groom',
+          phone: '+258840002222',
+          role: 'GUEST',
+          status: 'CONFIRMED',
+          vip: false,
+          diet: 'Vegetariano',
+          dietDetails: 'Sem carne vermelha',
+          musicRequest: 'Dusk Till Dawn - Sia',
+          needsAccommodation: 'Sim',
+          accommodationDetails: 'Precisa de quarto duplo perto do local',
+          tableId: 3,
+          checkIn: false,
+          qrCode: 'qr-guest-2',
+          rsvpMessage: 'Felicidades aos noivos! Será uma honra celebrar este dia incrível convosco.',
+        },
+        {
+          id: 'guest-3-uuid',
+          name: 'Fátima Mutola Sitoe',
+          side: 'Bride',
+          phone: '+258840003333',
+          role: 'GUEST',
+          status: 'CONFIRMED',
+          vip: true,
+          diet: 'Sem Glúten',
+          dietDetails: 'Celíaca severa',
+          musicRequest: 'Perfect - Ed Sheeran',
+          needsAccommodation: 'Não',
+          accommodationDetails: null,
+          tableId: 1,
+          checkIn: false,
+          qrCode: 'qr-guest-3',
+          rsvpMessage: 'Que alegria ver a minha querida Lumiana casar! Que Deus abençoe este lar.',
+        },
+        {
+          id: 'guest-4-uuid',
+          name: 'João Pedro Nhantumbo',
+          side: 'Groom',
+          phone: '+258840004444',
+          role: 'GUEST',
+          status: 'CONFIRMED',
+          vip: false,
+          diet: 'Nenhuma',
+          dietDetails: null,
+          musicRequest: 'Jerusalema - Master KG',
+          needsAccommodation: 'Não',
+          accommodationDetails: null,
+          tableId: 3,
+          checkIn: false,
+          qrCode: 'qr-guest-4',
+        },
+        {
+          id: 'guest-5-uuid',
+          name: 'Maria da Graça Tembe',
+          side: 'Bride',
+          phone: '+258840005555',
+          role: 'GUEST',
+          status: 'CONFIRMED',
+          vip: false,
+          diet: 'Vegano',
+          dietDetails: null,
+          musicRequest: 'A Thousand Years - Christina Perri',
+          needsAccommodation: 'Sim',
+          accommodationDetails: 'Procura quarto simples para 1 pessoa',
+          tableId: 2,
+          checkIn: false,
+          qrCode: 'qr-guest-5',
+          rsvpMessage: 'O amor é paciente, o amor é bondoso. Que felicidade partilhar deste dia!',
+        },
+        {
+          id: 'guest-6-uuid',
+          name: 'António Bila Machel',
+          side: 'Groom',
+          phone: '+258840006666',
+          role: 'GUEST',
+          status: 'CONFIRMED',
+          vip: true,
+          diet: 'Nenhuma',
+          dietDetails: null,
+          musicRequest: 'Sugarcane - Camidoh',
+          needsAccommodation: 'Não',
+          accommodationDetails: null,
+          tableId: 4,
+          checkIn: false,
+          qrCode: 'qr-guest-6',
+        },
+        {
+          id: 'guest-7-uuid',
+          name: 'Esperança Zita Mondlane',
+          side: 'Bride',
+          phone: '+258840007777',
+          role: 'GUEST',
+          status: 'PENDING',
+          vip: false,
+          diet: 'Nenhuma',
+          dietDetails: null,
+          musicRequest: null,
+          needsAccommodation: 'Não',
+          accommodationDetails: null,
+          tableId: null,
+          checkIn: false,
+          qrCode: 'qr-guest-7',
+        },
+        {
+          id: 'guest-8-uuid',
+          name: 'Rui Alberto Guambe',
+          side: 'Groom',
+          phone: '+258840008888',
+          role: 'GUEST',
+          status: 'DECLINED',
+          vip: false,
+          diet: 'Nenhuma',
+          dietDetails: null,
+          musicRequest: null,
+          needsAccommodation: 'Não',
+          accommodationDetails: null,
+          tableId: null,
+          checkIn: false,
+          qrCode: 'qr-guest-8',
+          rsvpMessage: 'Infelizmente estarei fora de Moçambique nesta data em trabalho, mas desejo-vos toda a felicidade do mundo!',
+        }
+      ];
+      for (const g of guestsToSeed) {
+        await prisma.guest.create({ data: g });
+      }
+
+      await prisma.companion.create({
+        data: {
+          name: 'Mateus Machava',
+          diet: 'Vegetariano',
+          dietDetails: 'Não come peixe nem carne',
+          guestId: 'guest-1-uuid',
+        }
+      });
+      await prisma.companion.create({
+        data: {
+          name: 'Júlio Cossa',
+          diet: 'Nenhuma',
+          dietDetails: null,
+          guestId: 'guest-2-uuid',
+        }
+      });
+
+      await prisma.song.create({
+        data: {
+          title: 'Amor de Mel',
+          artist: 'Lizha James',
+          requestedBy: 'Ana Beatriz Machava',
+          justification: 'A música favorita da noiva e das amigas de faculdade.',
+          category: 'pista',
+          position: 0,
+          isPlayed: false,
+          status: 'APPROVED',
+        }
+      });
+      await prisma.song.create({
+        data: {
+          title: 'Perfect',
+          artist: 'Ed Sheeran',
+          requestedBy: 'Fátima Mutola Sitoe',
+          justification: 'Perfeita para a dança dos noivos.',
+          category: 'cerimonia',
+          position: 0,
+          isPlayed: false,
+          status: 'APPROVED',
+        }
+      });
+
+      await prisma.wallMessage.create({
+        data: {
+          guestName: 'Fátima Mutola Sitoe',
+          guestId: 'guest-3-uuid',
+          content: 'O vosso casamento será lindo! Desejo-vos amor eterno e cumplicidade.',
+          approved: true,
+        }
+      });
+      await prisma.wallMessage.create({
+        data: {
+          guestName: 'Ana Beatriz Machava',
+          guestId: 'guest-1-uuid',
+          content: 'Que dia feliz! O meu coração transborda de alegria por vocês dois. Viva os noivos!',
+          approved: true,
+        }
+      });
+
+      return NextResponse.json({ success: true, message: 'Base de dados restaurada com sucesso.' });
+    }
+
     // ── QR CODE CHECK-IN PATH ──────────────────────────────────────────
     if (qrData) {
       const guest = await prisma.guest.findUnique({ where: { id: qrData } });

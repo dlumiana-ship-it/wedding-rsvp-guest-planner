@@ -8,6 +8,7 @@ const prisma = new PrismaClient();
 export async function GET(req: NextRequest) {
   try {
     const guests = await prisma.guest.findMany({
+      include: { companions: true },
       orderBy: { timestamp: 'desc' }
     });
     return NextResponse.json({ success: true, guests });
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, phone, side, diet, dietDetails, musicRequest, needsAccommodation, accommodationDetails, role } = body;
+    const { name, phone, side, diet, dietDetails, musicRequest, needsAccommodation, accommodationDetails, role, status, vip, rsvpMessage, giftDeliveryMethod, companions } = body;
 
     if (!name || !phone) {
       return NextResponse.json({ error: 'Nome e telefone são obrigatórios' }, { status: 400 });
@@ -46,15 +47,27 @@ export async function POST(req: NextRequest) {
         phone,
         side: side || 'Bride',
         role: role || 'GUEST',
+        status: status || 'PENDING',
+        vip: vip || false,
         diet: diet || 'Nenhuma',
         dietDetails: dietDetails || null,
         musicRequest: musicRequest || null,
         needsAccommodation: needsAccommodation || 'No',
         accommodationDetails: accommodationDetails || null,
+        rsvpMessage: rsvpMessage || null,
+        giftDeliveryMethod: giftDeliveryMethod || 'Ainda não decidi',
         tableId: null,
         checkIn: false,
         qrCode,
-      }
+        companions: companions && Array.isArray(companions) ? {
+          create: companions.map((c: any) => ({
+            name: c.name,
+            diet: c.diet || 'Nenhuma',
+            dietDetails: c.dietDetails || null,
+          }))
+        } : undefined,
+      },
+      include: { companions: true }
     });
 
     return NextResponse.json({ success: true, guest: newGuest });
@@ -68,10 +81,17 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, name, phone, side, diet, dietDetails, musicRequest, needsAccommodation, accommodationDetails, tableId, checkIn, role } = body;
+    const { id, name, phone, side, diet, dietDetails, musicRequest, needsAccommodation, accommodationDetails, tableId, checkIn, role, status, vip, rsvpMessage, giftDeliveryMethod, companions } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'ID do convidado é obrigatório' }, { status: 400 });
+    }
+
+    // Delete existing companions if companions array is provided
+    if (companions !== undefined) {
+      await prisma.companion.deleteMany({
+        where: { guestId: id }
+      });
     }
 
     const updatedGuest = await prisma.guest.update({
@@ -81,14 +101,26 @@ export async function PUT(req: NextRequest) {
         phone,
         side,
         role,
+        status,
+        vip,
         diet,
         dietDetails,
         musicRequest,
         needsAccommodation,
         accommodationDetails,
+        rsvpMessage,
+        giftDeliveryMethod,
         tableId: tableId !== undefined ? tableId : undefined,
         checkIn: checkIn !== undefined ? checkIn : undefined,
-      }
+        companions: companions && Array.isArray(companions) ? {
+          create: companions.map((c: any) => ({
+            name: c.name,
+            diet: c.diet || 'Nenhuma',
+            dietDetails: c.dietDetails || null,
+          }))
+        } : undefined,
+      },
+      include: { companions: true }
     });
 
     return NextResponse.json({ success: true, guest: updatedGuest });
@@ -118,3 +150,4 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Erro ao remover convidado' }, { status: 500 });
   }
 }
+
