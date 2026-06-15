@@ -7,7 +7,7 @@ export default function WidgetPage() {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   useEffect(() => {
-    const targetDate = new Date('2026-08-29T12:00:00');
+    const targetDate = new Date('2026-09-12T12:00:00');
 
     const updateCountdown = () => {
       const now = new Date();
@@ -73,7 +73,7 @@ export default function WidgetPage() {
 
         {/* Footer */}
         <div className="border-t border-white/5 pt-3 text-center">
-          <span className="text-[8px] uppercase tracking-widest text-stone-400 block">29 de Agosto de 2026</span>
+          <span className="text-[8px] uppercase tracking-widest text-stone-400 block">12 de Setembro de 2026</span>
           <span className="text-[9px] italic font-serif text-white/90 block mt-0.5">Lumiana & Vicente</span>
         </div>
       </div>

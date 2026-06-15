@@ -6,7 +6,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { 
   Heart, Calendar, MapPin, Music, Utensils, Info, Check, 
   ChevronDown, ChevronUp, Edit3, MessageSquare, Compass, Send, Plus, Trash2, Sparkles, PartyPopper,
-  CheckCircle2, User, X
+  CheckCircle2, User, X, Smartphone, Bell
 } from 'lucide-react';
 import MusicRequestWidget from './MusicRequestWidget';
 
@@ -57,6 +57,85 @@ const DIET_OPTIONS = [
 
 export default function GuestCenter({ guest, tableName, onUpdateGuest, onLogout, tableCompanions, giftSuggestions = [] }: GuestCenterProps) {
   const [showEditModal, setShowEditModal] = useState(false);
+  
+  // PWA & Notification states
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<string>('default');
+  const [showIosInstructions, setShowIosInstructions] = useState(false);
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+
+  useEffect(() => {
+    // Local countdown update for the widget preview
+    const targetDate = new Date('2026-09-12T12:00:00');
+    const updateTime = () => {
+      const now = new Date();
+      const diff = targetDate.getTime() - now.getTime();
+      if (diff <= 0) {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        return;
+      }
+      setTimeLeft({
+        days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+        minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+        seconds: Math.floor((diff % (1000 * 60)) / 1000),
+      });
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+
+    // PWA checks
+    if (typeof window !== 'undefined') {
+      if (window.matchMedia('(display-mode: standalone)').matches) {
+        setIsInstalled(true);
+      }
+      const handlePrompt = (e: any) => {
+        e.preventDefault();
+        setDeferredPrompt(e);
+      };
+      window.addEventListener('beforeinstallprompt', handlePrompt);
+
+      if ('Notification' in window) {
+        setNotificationPermission(Notification.permission);
+      }
+
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('beforeinstallprompt', handlePrompt);
+      };
+    }
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleInstallPWA = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+        setIsInstalled(true);
+      }
+    }
+  };
+
+  const handleEnableNotifications = async () => {
+    if (!('Notification' in window)) {
+      alert('O seu navegador não suporta notificações de ambiente de trabalho.');
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    setNotificationPermission(permission);
+    if (permission === 'granted') {
+      const targetDate = new Date('2026-09-12T12:00:00');
+      const diff = targetDate.getTime() - new Date().getTime();
+      const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+      new Notification("Notificações Ativadas! 🌿", {
+        body: `Faltam ${days > 0 ? days : 0} dias para o casamento de Lumiana & Vicente. Irá receber novidades diretamente no seu dispositivo!`,
+        icon: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&q=80&w=128',
+      });
+    }
+  };
   
   const parseGiftData = (methodString: string | null | undefined) => {
     if (!methodString) return { method: 'Ainda não decidi', name: '', notes: '' };
@@ -432,6 +511,119 @@ export default function GuestCenter({ guest, tableName, onUpdateGuest, onLogout,
           />
         </div>
 
+        {/* Widget & Notificações Card */}
+        <div className="bg-white border border-[#001B3D]/10 rounded-3xl p-6">
+          <div className="flex items-center gap-3 mb-4 border-b border-stone-100 pb-2">
+            <Smartphone className="w-5 h-5 text-wedding-gold" />
+            <div>
+              <h4 className="font-serif text-base text-wedding-navy">Widget & Notificações Push</h4>
+              <p className="text-[10px] text-stone-500 uppercase tracking-wider font-semibold">Atalhos e Alertas no Telemóvel</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+            {/* Countdown Widget Live Preview (col-span-5) */}
+            <div className="md:col-span-5">
+              <div className="bg-[#030d1a] border border-white/10 rounded-3xl p-4 text-white relative overflow-hidden shadow-xl aspect-square max-w-[200px] mx-auto flex flex-col justify-between">
+                {/* Background mesh */}
+                <div className="absolute inset-0 z-0">
+                  <div className="absolute -top-6 -left-6 w-24 h-24 bg-[#800020] rounded-full mix-blend-screen filter blur-xl opacity-30 animate-pulse"></div>
+                  <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-[#C5A880] rounded-full mix-blend-screen filter blur-xl opacity-25 animate-pulse delay-1000"></div>
+                  <div className="absolute inset-0 bg-[#001B3D]/80 backdrop-blur-xl"></div>
+                </div>
+
+                {/* Header */}
+                <div className="relative z-10 flex items-center justify-between border-b border-white/5 pb-2">
+                  <div className="flex items-center gap-1">
+                    <Heart className="w-3 h-3 text-[#800020] fill-[#800020] animate-pulse" />
+                    <span className="font-serif text-[10px] font-semibold text-white tracking-widest">L & V</span>
+                  </div>
+                  <span className="text-[7px] uppercase tracking-widest text-[#C5A880] font-bold">Widget</span>
+                </div>
+
+                {/* Ticking Countdown digits */}
+                <div className="relative z-10 grid grid-cols-4 gap-1 text-center my-auto">
+                  <div className="bg-white/5 border border-white/5 rounded-lg py-1 px-0.5">
+                    <span className="text-sm font-serif text-[#C5A880] font-bold block leading-none">{timeLeft.days}</span>
+                    <span className="text-[5px] uppercase tracking-wider text-stone-400 block mt-0.5">Dias</span>
+                  </div>
+                  <div className="bg-white/5 border border-white/5 rounded-lg py-1 px-0.5">
+                    <span className="text-sm font-serif text-[#C5A880] font-bold block leading-none">{String(timeLeft.hours).padStart(2, '0')}</span>
+                    <span className="text-[5px] uppercase tracking-wider text-stone-400 block mt-0.5">Horas</span>
+                  </div>
+                  <div className="bg-white/5 border border-white/5 rounded-lg py-1 px-0.5">
+                    <span className="text-sm font-serif text-[#C5A880] font-bold block leading-none">{String(timeLeft.minutes).padStart(2, '0')}</span>
+                    <span className="text-[5px] uppercase tracking-wider text-stone-400 block mt-0.5">Min.</span>
+                  </div>
+                  <div className="bg-white/5 border border-white/5 rounded-lg py-1 px-0.5">
+                    <span className="text-sm font-serif text-[#C5A880] font-bold block leading-none">{String(timeLeft.seconds).padStart(2, '0')}</span>
+                    <span className="text-[5px] uppercase tracking-wider text-stone-400 block mt-0.5">Seg.</span>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="relative z-10 border-t border-white/5 pt-1.5 text-center">
+                  <span className="text-[6px] uppercase tracking-widest text-stone-400 block">12 de Setembro de 2026</span>
+                  <span className="text-[7px] italic font-serif text-white/95 block mt-0.5">Lumiana & Vicente</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Controls (col-span-7) */}
+            <div className="md:col-span-7 space-y-4">
+              <p className="text-stone-600 text-xs leading-relaxed font-light">
+                Fixe o atalho do widget de contagem decrescente no ecrã principal do seu telemóvel para aceder instantaneamente e ative as notificações push para receber avisos sobre o grande dia.
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-2.5">
+                {/* Installation Button */}
+                {deferredPrompt ? (
+                  <button
+                    onClick={handleInstallPWA}
+                    type="button"
+                    className="flex-1 py-2.5 px-4 bg-wedding-navy hover:bg-[#800020] text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+                  >
+                    <Smartphone className="w-4 h-4 text-wedding-gold" />
+                    Fixar no Ecrã Principal
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowIosInstructions(true)}
+                    type="button"
+                    className="flex-1 py-2.5 px-4 bg-stone-50 hover:bg-stone-100 text-stone-700 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 border border-stone-200 active:scale-95 cursor-pointer"
+                  >
+                    <Smartphone className="w-4 h-4 text-stone-500" />
+                    Como Fixar no Ecrã
+                  </button>
+                )}
+
+                {/* Notifications Button */}
+                <button
+                  onClick={handleEnableNotifications}
+                  disabled={notificationPermission === 'granted'}
+                  type="button"
+                  className={`flex-1 py-2.5 px-4 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    notificationPermission === 'granted'
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-250 cursor-default'
+                      : 'bg-wedding-gold hover:bg-[#d6b78d] text-stone-950 shadow-md active:scale-95'
+                  }`}
+                >
+                  <Bell className="w-4 h-4" />
+                  {notificationPermission === 'granted' ? 'Notificações Ativas ✓' : 'Ativar Alertas Push'}
+                </button>
+              </div>
+
+              <a
+                href="/widget"
+                target="_blank"
+                className="text-[10px] text-stone-400 hover:text-[#800020] font-bold uppercase tracking-wider block text-center hover:underline"
+              >
+                Abrir Widget Compacto em Ecrã Inteiro ↗
+              </a>
+            </div>
+          </div>
+        </div>
+
         {/* Digital Wall interactive panel */}
         <div className="bg-white border border-[#001B3D]/10 rounded-3xl p-6">
           <h4 className="font-serif text-base text-wedding-navy border-b border-stone-100 pb-2 mb-4">
@@ -675,6 +867,73 @@ export default function GuestCenter({ guest, tableName, onUpdateGuest, onLogout,
               />
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* iOS PWA Installation Instructions Modal */}
+      <AnimatePresence>
+        {showIosInstructions && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowIosInstructions(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl relative border border-stone-100 text-stone-900 text-left"
+              >
+                <button
+                  onClick={() => setShowIosInstructions(false)}
+                  type="button"
+                  className="absolute top-4 right-4 p-1 rounded-full text-stone-400 hover:text-stone-900 hover:bg-stone-50 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+
+                <div className="mb-4">
+                  <h3 className="font-serif text-lg text-wedding-navy mb-1 flex items-center gap-1.5">
+                    <Smartphone className="w-5 h-5 text-wedding-gold" />
+                    Fixar no Ecrã Principal
+                  </h3>
+                  <p className="text-stone-500 text-xs">Adicione o atalho e o widget de contagem regressiva ao seu telemóvel.</p>
+                </div>
+
+                <div className="space-y-4 text-xs text-stone-600 leading-relaxed font-light font-sans">
+                  <div className="border-l-2 border-wedding-gold pl-3">
+                    <span className="font-bold text-stone-850 block mb-0.5">No Apple iPhone (iOS Safari)</span>
+                    <ol className="list-decimal pl-4 space-y-1">
+                      <li>Clique no botão de **Partilhar** 📤 (Share) na barra inferior do Safari.</li>
+                      <li>Desça o menu de opções e clique em **"Adicionar ao Ecrã Principal"** (Add to Home Screen).</li>
+                      <li>Confirme o nome e clique em **"Adicionar"** no canto superior direito.</li>
+                    </ol>
+                  </div>
+
+                  <div className="border-l-2 border-wedding-navy pl-3">
+                    <span className="font-bold text-stone-850 block mb-0.5">No Android (Google Chrome)</span>
+                    <ol className="list-decimal pl-4 space-y-1">
+                      <li>Clique nos **três pontos** ⠇ no canto superior direito do Chrome.</li>
+                      <li>Escolha a opção **"Instalar aplicação"** ou **"Adicionar ao Ecrã Principal"**.</li>
+                      <li>Confirme a instalação para ver o atalho no seu ecrã inicial.</li>
+                    </ol>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowIosInstructions(false)}
+                  type="button"
+                  className="w-full mt-6 py-2.5 bg-wedding-navy hover:bg-[#800020] text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-md text-center"
+                >
+                  Entendido
+                </button>
+              </motion.div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>

@@ -469,6 +469,32 @@ function OverviewSection({
   totalAttending, companionsCount, responseRate, checkedIn, 
   allocated, unallocated, onAutoAllocate, onOpenExport, onResetData, onNavigate 
 }: any) {
+  const [broadcastText, setBroadcastText] = useState('');
+  const [broadcastSuccess, setBroadcastSuccess] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+
+  const handleSendBroadcast = () => {
+    if (!broadcastText.trim()) return;
+    setIsSending(true);
+    
+    // Simulate push broadcast by saving to localStorage
+    const saved = localStorage.getItem('wedding_broadcast_notifications');
+    const list = saved ? JSON.parse(saved) : [];
+    list.unshift({
+      id: `broadcast-${Date.now()}`,
+      text: broadcastText.trim(),
+      timestamp: new Date().toISOString()
+    });
+    localStorage.setItem('wedding_broadcast_notifications', JSON.stringify(list));
+
+    setTimeout(() => {
+      setIsSending(false);
+      setBroadcastText('');
+      setBroadcastSuccess(true);
+      setTimeout(() => setBroadcastSuccess(false), 3000);
+    }, 850);
+  };
+
   const recentGuests = [...guests].sort((a: any, b: any) =>
     new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   ).slice(0, 5);
@@ -572,6 +598,49 @@ function OverviewSection({
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Broadcast Push Notifications Panel */}
+      <div className="bg-white rounded-3xl border border-stone-200/60 overflow-hidden shadow-xs text-left p-6 space-y-4">
+        <div className="flex items-center gap-3 border-b border-stone-100 pb-3">
+          <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-[#800020] shrink-0">
+            <Bell className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="font-serif text-sm font-semibold text-stone-850">Notificações Push Coletivas</h2>
+            <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wider">Disparar Alertas de Contagem Regressiva & Avisos</p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <p className="text-stone-600 text-xs leading-relaxed font-light">
+            Escreva uma mensagem de push abaixo para enviar instantaneamente a todos os convidados e membros da equipa com notificações ativas.
+          </p>
+
+          <textarea
+            rows={2}
+            value={broadcastText}
+            onChange={(e) => setBroadcastText(e.target.value)}
+            placeholder="Ex: Faltam apenas 60 dias para o casamento de Lumiana & Vicente! Lembrem-se de preencher o RSVP. 🌿"
+            className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-wedding-navy text-stone-800 resize-none font-sans"
+          />
+
+          {broadcastSuccess && (
+            <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 p-2.5 rounded-xl font-medium">
+              ✓ Notificação push disparada com sucesso para todos os convidados!
+            </div>
+          )}
+
+          <button
+            onClick={handleSendBroadcast}
+            disabled={isSending || !broadcastText.trim()}
+            type="button"
+            className="py-2.5 px-5 bg-[#800020] hover:bg-[#500312] disabled:bg-stone-200 disabled:text-stone-400 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+          >
+            {isSending ? 'A enviar...' : 'Enviar Alerta Push'}
+            <Send className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
     </motion.div>

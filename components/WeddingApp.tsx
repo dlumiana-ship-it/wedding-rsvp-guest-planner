@@ -8,7 +8,7 @@ import {
   Users, Sparkles, Send, Download, Plus, Trash2, 
   Lock, Check, MessageSquare, X, ArrowRight, Printer, 
   Compass, Volume2, Camera, Upload, Gift, BookOpen,
-  CheckCircle2, User
+  CheckCircle2, User, Bell
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
@@ -70,6 +70,49 @@ export default function WeddingPlannerApp({ user, onLogout, onLogin }: { user?: 
   // Tab Navigation for Guest Site
   const [activeTab, setActiveTab] = useState<'site' | 'rsvp' | 'mural' | 'presentes'>('site');
   const [giftSuggestions, setGiftSuggestions] = useState<any[]>([]);
+  const [activeToast, setActiveToast] = useState<{ id: string; text: string } | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let lastId = localStorage.getItem('wedding_last_processed_broadcast_id') || '';
+
+    const checkBroadcasts = () => {
+      const saved = localStorage.getItem('wedding_broadcast_notifications');
+      if (saved) {
+        try {
+          const list = JSON.parse(saved);
+          if (Array.isArray(list) && list.length > 0) {
+            const latest = list[0];
+            if (latest.id !== lastId) {
+              lastId = latest.id;
+              localStorage.setItem('wedding_last_processed_broadcast_id', latest.id);
+
+              // 1. Show in-app Toast
+              setActiveToast({ id: latest.id, text: latest.text });
+              setTimeout(() => {
+                setActiveToast(null);
+              }, 6000);
+
+              // 2. Show browser native notification
+              if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification("Mensagem dos Noivos 🌿", {
+                  body: latest.text,
+                  icon: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&q=80&w=128',
+                });
+              }
+            }
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+
+    checkBroadcasts();
+    const interval = setInterval(checkBroadcasts, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     fetch('/api/gift-suggestions')
@@ -920,6 +963,35 @@ export default function WeddingPlannerApp({ user, onLogout, onLogin }: { user?: 
         </div>
       </footer>
 
+      {/* Premium Notification Toast */}
+      <AnimatePresence>
+        {activeToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            className="fixed top-6 left-1/2 -translate-x-1/2 z-55 w-full max-w-sm px-4"
+          >
+            <div className="bg-[#800020]/95 backdrop-blur-md text-white border border-[#C5A880]/30 rounded-2xl p-4 shadow-2xl flex items-start gap-3 relative overflow-hidden">
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#C5A880]" />
+              
+              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 mt-0.5">
+                <Bell className="w-4 h-4 text-wedding-gold animate-bounce" />
+              </div>
+              <div className="flex-1 text-left">
+                <span className="text-[9px] uppercase tracking-widest text-[#C5A880] font-bold block mb-0.5">Mensagem dos Noivos</span>
+                <p className="text-xs font-medium leading-relaxed text-stone-100">{activeToast.text}</p>
+              </div>
+              <button
+                onClick={() => setActiveToast(null)}
+                className="p-1 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
