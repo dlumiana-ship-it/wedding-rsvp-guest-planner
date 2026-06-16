@@ -26,7 +26,7 @@ export default function AddGuestModal({ isOpen, onClose, onSuccess }: AddGuestMo
   const [partnerName, setPartnerName] = useState('');
 
   // Staff-specific fields
-  const [role, setRole] = useState<'STAFF' | 'MC' | 'DJ'>('STAFF');
+  const [role, setRole] = useState<'STAFF' | 'MC' | 'DJ' | 'PHOTOGRAPHER'>('STAFF');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -341,6 +341,7 @@ export default function AddGuestModal({ isOpen, onClose, onSuccess }: AddGuestMo
                     <option value="STAFF">Cerimonial Geral / Staff</option>
                     <option value="MC">Mestre de Cerimónias (MC)</option>
                     <option value="DJ">DJ Oficial</option>
+                    <option value="PHOTOGRAPHER">Fotógrafo Oficial</option>
                   </select>
                 </div>
 

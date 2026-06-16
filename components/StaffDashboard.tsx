@@ -124,19 +124,23 @@ export default function StaffDashboard({
     localStorage.setItem('wedding_staff_notifications', JSON.stringify(updated));
   };
 
-  // Compute World Class Stats
-  const totalRsvp = guests.length;
-  const confirmedGuests = guests.filter(g => g.status === 'CONFIRMED');
-  const pendingGuests = guests.filter(g => g.status === 'PENDING');
-  const declinedGuests = guests.filter(g => g.status === 'DECLINED');
+  // Compute World Class Stats (Exclude Organization roles from Guest statistics)
+  const orgRoles = ['STAFF', 'MC', 'DJ', 'PHOTOGRAPHER'];
+  const guestList = guests.filter(g => !g.role || !orgRoles.includes(g.role));
+  const orgList = guests.filter(g => g.role && orgRoles.includes(g.role));
+
+  const totalRsvp = guestList.length;
+  const confirmedGuests = guestList.filter(g => g.status === 'CONFIRMED');
+  const pendingGuests = guestList.filter(g => g.status === 'PENDING');
+  const declinedGuests = guestList.filter(g => g.status === 'DECLINED');
 
   const companionsCount = confirmedGuests.reduce((sum, g) => sum + (g.companions?.length || 0), 0);
   const totalAttending = confirmedGuests.length + companionsCount;
 
-  const checkedIn = guests.filter(g => g.checkIn).length;
+  const checkedIn = guestList.filter(g => g.checkIn).length;
   
   // Response Rate
-  const responded = guests.filter(g => g.status !== 'PENDING').length;
+  const responded = guestList.filter(g => g.status !== 'PENDING').length;
   const responseRate = totalRsvp > 0 ? Math.round((responded / totalRsvp) * 100) : 0;
 
   const allocated = confirmedGuests.filter(g => g.tableId !== null).length;
@@ -145,9 +149,15 @@ export default function StaffDashboard({
   const brideCount = confirmedGuests.filter(g => g.side === 'Bride').length;
   const groomCount = confirmedGuests.filter(g => g.side === 'Groom').length;
 
-  const filteredGuests = guests.filter(g => {
+  const filteredGuests = guestList.filter(g => {
     const matchSearch = !searchTerm || g.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (g.musicRequest || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchSide = filterSide === 'All' || g.side === filterSide;
+    return matchSearch && matchSide;
+  });
+
+  const filteredOrg = orgList.filter(g => {
+    const matchSearch = !searchTerm || g.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchSide = filterSide === 'All' || g.side === filterSide;
     return matchSearch && matchSide;
   });
@@ -329,7 +339,7 @@ export default function StaffDashboard({
               {activeSection === 'tables' && (
                 <SectionWrapper key="tables" title="Disposição Visual de Mesas" icon={Table2} subtitle="Aloque convidados confirmados nas mesas visualmente">
                   <TableVisualPlanner 
-                    guests={guests} 
+                    guests={guestList} 
                     onAssignGuest={onAssignGuest} 
                     onRefreshGuests={onRefreshGuests}
                   />
@@ -337,7 +347,11 @@ export default function StaffDashboard({
               )}
               {activeSection === 'database' && (
                 <DatabaseSection key="database"
-                  guests={filteredGuests} allGuests={guests} tables={tables}
+                  guests={filteredGuests}
+                  orgGuests={filteredOrg}
+                  allGuests={guestList}
+                  allOrg={orgList}
+                  tables={tables}
                   searchTerm={searchTerm} setSearchTerm={setSearchTerm}
                   filterSide={filterSide} setFilterSide={setFilterSide}
                   onDeleteGuest={onDeleteGuest}
@@ -358,7 +372,7 @@ export default function StaffDashboard({
                 <SectionWrapper key="gifts" title="Gestão de Oferendas" icon={Gift} subtitle="Gira a sequência da cerimónia e a lista de itens do Cestão Físico">
                   <GiftSuggestionsPanel />
                   <div className="mt-8">
-                    <GiftSequencePanel guestNames={guests.map(g => g.name)} />
+                    <GiftSequencePanel guestNames={guestList.map(g => g.name)} />
                   </div>
                 </SectionWrapper>
               )}
@@ -376,7 +390,7 @@ export default function StaffDashboard({
       <ExportModal
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
-        guests={guests as any}
+        guests={guestList as any}
         tables={tables}
         tableNames={tableNames}
       />
@@ -649,10 +663,13 @@ function OverviewSection({
 
 // ── Database Section ───────────────────────────────────────────────────────────
 function DatabaseSection({ 
-  guests, allGuests, tables, searchTerm, setSearchTerm,
+  guests, orgGuests, allGuests, allOrg, tables, searchTerm, setSearchTerm,
   filterSide, setFilterSide, onDeleteGuest, onAssignTable, onAddGuest, onInvite, onView, onToggleVip,
   onSimulateUser
 }: any) {
+  const [dbTab, setDbTab] = useState<'guests' | 'org'>('guests');
+  const activeList = dbTab === 'guests' ? guests : orgGuests;
+
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
       className="space-y-6">
@@ -662,12 +679,40 @@ function DatabaseSection({
             <Database className="w-5 h-5 text-wedding-burgundy" />
             <h1 className="font-serif text-2xl font-semibold text-wedding-navy">Base de Dados de Convidados</h1>
           </div>
-          <p className="text-xs text-stone-500">{allGuests.length} convidados totais registados no portal</p>
+          <p className="text-xs text-stone-500">
+            {dbTab === 'guests'
+              ? `${allGuests.length} convidados totais registados no portal`
+              : `${allOrg.length} membros da equipa cadastrados`}
+          </p>
         </div>
         
         <button onClick={onAddGuest}
           className="px-4 py-2.5 bg-wedding-navy hover:bg-slate-800 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors self-start sm:self-auto cursor-pointer shadow-sm">
-          <Plus className="w-3.5 h-3.5" /> Adicionar Convidado
+          <Plus className="w-3.5 h-3.5" /> {dbTab === 'guests' ? 'Adicionar Convidado' : 'Adicionar Staff'}
+        </button>
+      </div>
+
+      {/* Tabs Switcher */}
+      <div className="flex border-b border-stone-200/60 pb-1 gap-6 text-left">
+        <button
+          onClick={() => setDbTab('guests')}
+          className={`pb-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+            dbTab === 'guests'
+              ? 'border-wedding-burgundy text-wedding-burgundy'
+              : 'border-transparent text-stone-400 hover:text-stone-700'
+          }`}
+        >
+          Lista de Convidados ({allGuests.length})
+        </button>
+        <button
+          onClick={() => setDbTab('org')}
+          className={`pb-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+            dbTab === 'org'
+              ? 'border-wedding-burgundy text-wedding-burgundy'
+              : 'border-transparent text-stone-400 hover:text-stone-700'
+          }`}
+        >
+          Equipa / Organização ({allOrg.length})
         </button>
       </div>
 
@@ -677,7 +722,7 @@ function DatabaseSection({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" />
           <input
             value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-            placeholder="Pesquisar convidados por nome..."
+            placeholder={dbTab === 'guests' ? "Pesquisar convidados por nome..." : "Pesquisar equipa por nome..."}
             className="w-full pl-9 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-wedding-navy text-stone-850"
           />
         </div>
@@ -699,21 +744,27 @@ function DatabaseSection({
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-stone-50 border-b border-stone-200/60">
-                <th className="text-left px-5 py-3.5 text-[9px] font-bold text-stone-400 uppercase tracking-widest">Convidado</th>
+                <th className="text-left px-5 py-3.5 text-[9px] font-bold text-stone-400 uppercase tracking-widest">
+                  {dbTab === 'guests' ? 'Convidado' : 'Membro da Equipa'}
+                </th>
                 <th className="text-left px-4 py-3.5 text-[9px] font-bold text-stone-400 uppercase tracking-widest hidden md:table-cell">Estado RSVP</th>
-                <th className="text-left px-4 py-3.5 text-[9px] font-bold text-stone-400 uppercase tracking-widest hidden md:table-cell">Dieta / Alojamento</th>
-                <th className="text-left px-4 py-3.5 text-[9px] font-bold text-stone-400 uppercase tracking-widest">Mesa</th>
+                <th className="text-left px-4 py-3.5 text-[9px] font-bold text-stone-400 uppercase tracking-widest hidden md:table-cell">
+                  {dbTab === 'guests' ? 'Dieta / Alojamento' : 'Função / Cargo'}
+                </th>
+                <th className="text-left px-4 py-3.5 text-[9px] font-bold text-stone-400 uppercase tracking-widest">
+                  {dbTab === 'guests' ? 'Mesa' : 'Alocação'}
+                </th>
                 <th className="text-left px-4 py-3.5 text-[9px] font-bold text-stone-400 uppercase tracking-widest hidden sm:table-cell">Check-in</th>
                 <th className="px-4 py-3.5" />
               </tr>
             </thead>
             
             <tbody className="divide-y divide-stone-100">
-              {guests.length === 0 ? (
+              {activeList.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-stone-400 text-xs italic">Nenhum convidado localizado.</td>
+                  <td colSpan={6} className="text-center py-12 text-stone-400 text-xs italic">Nenhum registo localizado.</td>
                 </tr>
-              ) : guests.map((g: any) => (
+              ) : activeList.map((g: any) => (
                 <tr key={g.id} className="hover:bg-stone-50/50 transition-colors group">
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
@@ -734,6 +785,7 @@ function DatabaseSection({
                             <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${
                               g.role === 'MC' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
                               g.role === 'DJ' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
+                              g.role === 'PHOTOGRAPHER' ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' :
                               'bg-blue-100 text-blue-800 border border-blue-200'
                             }`}>
                               {g.role}
@@ -831,34 +883,49 @@ function DatabaseSection({
                   </td>
 
                   <td className="px-4 py-3.5 hidden md:table-cell max-w-[200px]">
-                    <div className="space-y-1">
-                      {g.diet !== 'Nenhuma' && (
-                        <span className="text-[9px] bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded-md block w-fit truncate">
-                          🍴 Dieta: {g.diet}
-                        </span>
-                      )}
-                      {(g.needsAccommodation === 'Sim' || g.needsAccommodation === 'Yes') && (
-                        <span className="text-[9px] bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-md block w-fit truncate">
-                          🏨 Alojamento
-                        </span>
-                      )}
-                      {g.diet === 'Nenhuma' && g.needsAccommodation !== 'Sim' && g.needsAccommodation !== 'Yes' && (
-                        <span className="text-stone-300">—</span>
-                      )}
-                    </div>
+                    {dbTab === 'guests' ? (
+                      <div className="space-y-1">
+                        {g.diet !== 'Nenhuma' && (
+                          <span className="text-[9px] bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded-md block w-fit truncate">
+                            🍴 Dieta: {g.diet}
+                          </span>
+                        )}
+                        {(g.needsAccommodation === 'Sim' || g.needsAccommodation === 'Yes') && (
+                          <span className="text-[9px] bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-md block w-fit truncate">
+                            🏨 Alojamento
+                          </span>
+                        )}
+                        {g.diet === 'Nenhuma' && g.needsAccommodation !== 'Sim' && g.needsAccommodation !== 'Yes' && (
+                          <span className="text-stone-300">—</span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="font-semibold text-stone-750">
+                        {g.role === 'STAFF' ? 'Organização Geral' :
+                         g.role === 'MC' ? 'Mestre de Cerimónias (MC)' :
+                         g.role === 'DJ' ? 'DJ Oficial' :
+                         g.role === 'PHOTOGRAPHER' ? 'Fotógrafo Oficial' : g.role}
+                      </span>
+                    )}
                   </td>
 
                   <td className="px-4 py-3.5">
-                    <select
-                      value={g.tableId ?? ''}
-                      onChange={e => onAssignTable(g.id, e.target.value ? parseInt(e.target.value, 10) : null)}
-                      className="text-[10px] bg-stone-50 border border-stone-150 rounded-xl px-2.5 py-1.5 focus:outline-none text-stone-700 min-w-[100px] cursor-pointer"
-                    >
-                      <option value="">Sem mesa</option>
-                      {tables.map((t: any) => (
-                        <option key={t.id} value={t.id}>{t.name}</option>
-                      ))}
-                    </select>
+                    {dbTab === 'guests' ? (
+                      <select
+                        value={g.tableId ?? ''}
+                        onChange={e => onAssignTable(g.id, e.target.value ? parseInt(e.target.value, 10) : null)}
+                        className="text-[10px] bg-stone-50 border border-stone-150 rounded-xl px-2.5 py-1.5 focus:outline-none text-stone-700 min-w-[100px] cursor-pointer"
+                      >
+                        <option value="">Sem mesa</option>
+                        {tables.map((t: any) => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="inline-flex items-center bg-[#800020]/10 text-[#800020] border border-[#800020]/20 font-bold px-2.5 py-1 rounded-full text-[9px] uppercase tracking-wider">
+                        Organização
+                      </span>
+                    )}
                   </td>
 
                   <td className="px-4 py-3.5 hidden sm:table-cell">
