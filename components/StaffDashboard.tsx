@@ -806,7 +806,9 @@ function DatabaseSection({
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://lumianaevicente.com';
-                                    navigator.clipboard.writeText(appUrl);
+                                    const pin = g.phone ? g.phone.slice(-4) : '';
+                                    const personalUrl = pin ? `${appUrl}?pin=${pin}` : appUrl;
+                                    navigator.clipboard.writeText(personalUrl);
                                     alert(`Link de acesso copiado para ${g.name}!`);
                                   }}
                                   className="p-0.5 text-stone-400 hover:text-wedding-navy hover:bg-stone-200 rounded transition-all cursor-pointer"
@@ -821,11 +823,13 @@ function DatabaseSection({
                                     e.stopPropagation();
                                     const firstName = g.name ? g.name.split(' ')[0] : 'Convidado';
                                     const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://lumianaevicente.com';
+                                    const pin = g.phone ? g.phone.slice(-4) : '';
+                                    const personalUrl = pin ? `${appUrl}?pin=${pin}` : appUrl;
                                     const text = `Olá ${firstName}! 🌿\n\n` +
                                       `Temos a alegria de partilhar consigo o convite para o nosso casamento.\n\n` +
                                       `📅 12 de Setembro de 2026\n📍 Maputo\n\n` +
                                       `👉 CLIQUE NESTE LINK PARA ENTRAR E CONFIRMAR:\n` +
-                                      `🔗 ${appUrl} 🔗\n\n` +
+                                      `🔗 ${personalUrl} 🔗\n\n` +
                                       `Com carinho,\nLumiana & Vicente`;
                                     let phone = g.phone || '';
                                     phone = phone.replace(/\D/g, '');
@@ -962,7 +966,9 @@ function DatabaseSection({
                       {/* Copiar Link de Acesso */}
                       <button onClick={() => {
                         const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://lumianaevicente.com';
-                        navigator.clipboard.writeText(appUrl);
+                        const pin = g.phone ? g.phone.slice(-4) : '';
+                        const personalUrl = pin ? `${appUrl}?pin=${pin}` : appUrl;
+                        navigator.clipboard.writeText(personalUrl);
                         alert(`Link de acesso copiado para ${g.name}!`);
                       }}
                         className="p-1.5 text-stone-500 hover:text-wedding-navy hover:bg-blue-50 rounded-lg transition-colors cursor-pointer" title="Copiar Link de Acesso">
@@ -973,11 +979,13 @@ function DatabaseSection({
                       <button onClick={() => {
                         const firstName = g.name ? g.name.split(' ')[0] : 'Convidado';
                         const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://lumianaevicente.com';
+                        const pin = g.phone ? g.phone.slice(-4) : '';
+                        const personalUrl = pin ? `${appUrl}?pin=${pin}` : appUrl;
                         const text = `Olá ${firstName}! 🌿\n\n` +
                           `Temos a alegria de partilhar consigo o convite para o nosso casamento.\n\n` +
                           `📅 12 de Setembro de 2026\n📍 Maputo\n\n` +
                           `👉 CLIQUE NESTE LINK PARA ENTRAR E CONFIRMAR:\n` +
-                          `🔗 ${appUrl} 🔗\n\n` +
+                          `🔗 ${personalUrl} 🔗\n\n` +
                           `Com carinho,\nLumiana & Vicente`;
                         let phone = g.phone || '';
                         phone = phone.replace(/\D/g, '');

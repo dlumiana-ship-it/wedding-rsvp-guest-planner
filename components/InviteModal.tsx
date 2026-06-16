@@ -47,7 +47,8 @@ export default function InviteModal({ isOpen, onClose, guest }: InviteModalProps
   if (!guest) return null;
 
   const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://lumianaevicente.com';
-  const rsvpUrl = appUrl;
+  const pin = guest.phone ? guest.phone.slice(-4) : '';
+  const rsvpUrl = pin ? `${appUrl}?pin=${pin}` : appUrl;
   const partner = guest.companions?.[0]?.name;
   const displayName = partner ? `${guest.name} & ${partner}` : guest.name;
   const greetingName = partner ? `${guest.name.split(' ')[0]} & ${partner.split(' ')[0]}` : guest.name.split(' ')[0];

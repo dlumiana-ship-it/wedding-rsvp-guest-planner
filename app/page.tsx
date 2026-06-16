@@ -12,15 +12,44 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('wedding_user_session');
-      if (saved) {
+      const searchParams = new URLSearchParams(window.location.search);
+      const queryPin = searchParams.get('pin');
+
+      const authenticatePin = async (pin: string) => {
         try {
-          setUser(JSON.parse(saved));
+          const res = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ digits: pin }),
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            setUser(data.user);
+            localStorage.setItem('wedding_user_session', JSON.stringify(data.user));
+            // Remove pin query param from URL without reloading page
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
+          }
         } catch (e) {
-          console.error('Failed to parse user session', e);
+          console.error('Failed to auto-login with pin', e);
+        } finally {
+          setLoading(false);
         }
+      };
+
+      if (queryPin) {
+        authenticatePin(queryPin);
+      } else {
+        const saved = localStorage.getItem('wedding_user_session');
+        if (saved) {
+          try {
+            setUser(JSON.parse(saved));
+          } catch (e) {
+            console.error('Failed to parse user session', e);
+          }
+        }
+        setLoading(false);
       }
-      setLoading(false);
     }
   }, []);
 
